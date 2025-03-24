@@ -1,3 +1,18 @@
+# Modification
+
+1. std_matcher need GTSAM, but I have version issue. CATKIN_IGNORE
+2. livox_ros_driver2, complie, in src folder. But the same time, the workspace is complied. 
+3. Sophus `optional` issue:
+> /home/larrydong/voxelmap_fastlio_ws/src/VoxelMapPlus_FASTLIO2/voxel_plus/src/map_builder/ieskf.h:3,
+                 from /home/larrydong/voxelmap_fastlio_ws/src/VoxelMapPlus_FASTLIO2/voxel_plus/src/map_builder/ieskf.cpp:1:
+/usr/local/include/sophus/so3.hpp:572:12: error: ‘std::optional’ has not been declared
+  572 |       std::optional<Scalar> const& theta_o = std::nullopt) {
+      |            ^~~~~~~~
+
+Solution: Change c++14 -> c++17
+4. Sophus cmake version: 3.24+, install the newest cmake and add the cmake path to PATH: "export PATH=/usr/local/bin:$PATH	# cmake 3.31 path"
+
+
 # FastLIO2 With VoxelMapPlus And STD
 ![image](https://github.com/liangheming/VoxelMapPlus_FASTLIO2/blob/main/resources/demo.png)
 
