@@ -1,16 +1,10 @@
-# Modification
+# 个人修改
 
-1. std_matcher need GTSAM, but I have version issue. CATKIN_IGNORE
-2. livox_ros_driver2, complie, in src folder. But the same time, the workspace is complied. 
-3. Sophus `optional` issue:
-> /home/larrydong/voxelmap_fastlio_ws/src/VoxelMapPlus_FASTLIO2/voxel_plus/src/map_builder/ieskf.h:3,
-                 from /home/larrydong/voxelmap_fastlio_ws/src/VoxelMapPlus_FASTLIO2/voxel_plus/src/map_builder/ieskf.cpp:1:
-/usr/local/include/sophus/so3.hpp:572:12: error: ‘std::optional’ has not been declared
-  572 |       std::optional<Scalar> const& theta_o = std::nullopt) {
-      |            ^~~~~~~~
-
-Solution: Change c++14 -> c++17
-4. Sophus cmake version: 3.24+, install the newest cmake and add the cmake path to PATH: "export PATH=/usr/local/bin:$PATH	# cmake 3.31 path"
+## 安装配置过程
+1. Sophus编译时遇到cmake版本过低，需要：官方下载最新版本cmake，然后编译install，然后修改PATH环境指到最新的cmake: PATH: "export PATH=/usr/local/bin:$PATH  
+2. `std_matcher` 需要GTSAM，安装GTSAM时版本遇到些问题。因为用不到回环，所以CATKIN_IGNORE掉了这个launch
+3. livox_ros_driver2，安装后会出现cmake配置文件找不到问题，所以索性直接装到对应的workspace下面；但是执行脚本文件时，不知道为啥会自动编译整个workspace，所以保证其他没有问题。
+4. VoxelMapPlus_FASTLIO2代码CMakeLists给的c++是14，和我安装的sophus版本需要c++17，所以进行了修改。否则会报错：error: ‘std::optional’ has not been declared
 
 
 # FastLIO2 With VoxelMapPlus And STD
