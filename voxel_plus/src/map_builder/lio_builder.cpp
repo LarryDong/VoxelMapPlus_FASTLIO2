@@ -1,4 +1,5 @@
 #include "lio_builder.h"
+#include "my_ros_debugger.hpp"
 
 namespace lio
 {
@@ -28,7 +29,7 @@ namespace lio
     bool LIOBuilder::initializeImu(std::vector<IMUData> &imus)
     {
         data_group.imu_cache.insert(data_group.imu_cache.end(), imus.begin(), imus.end());
-        if (data_group.imu_cache.size() < config.imu_init_num)
+        if (data_group.imu_cache.size() < config.imu_init_num)      // imu_init_num=20. 2-second init.
             return false;
         Eigen::Vector3d acc_mean = Eigen::Vector3d::Zero();
         Eigen::Vector3d gyro_mean = Eigen::Vector3d::Zero();
@@ -174,21 +175,27 @@ namespace lio
 
     void LIOBuilder::process(SyncPackage &package)
     {
+        ROS_INFO_ONCE("LIOBuilder::process.");
+        
+        map->printInfo(false);
+
         if (status == LIOStatus::IMU_INIT)
         {
             if (initializeImu(package.imus))
             {
                 status = LIOStatus::MAP_INIT;
                 data_group.last_cloud_end_time = package.cloud_end_time;
+                ROS_INFO("--> IMU Inited. State-> MAP_INIT");
             }
         }
         else if (status == LIOStatus::MAP_INIT)
-        {
+        {   
             undistortCloud(package);
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(package.cloud);
             std::vector<PointWithCov> pv_list;
             Eigen::Matrix3d r_wl = kf.x().rot * kf.x().rot_ext;
             Eigen::Vector3d p_wl = kf.x().rot * kf.x().pos_ext + kf.x().pos;
+
             for (size_t i = 0; i < point_world->size(); i++)
             {
                 PointWithCov pv;
@@ -208,6 +215,7 @@ namespace lio
             map->build(pv_list);
 
             status = LIOStatus::LIO_MAPPING;
+            ROS_INFO("--> Map Inited. State-> LIO_MAPPING");
         }
         else        // LIOStatus::LIO_MAPPING
         {

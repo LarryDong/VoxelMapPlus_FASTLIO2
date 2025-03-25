@@ -5,7 +5,8 @@ project(voxel_plus)
 add_compile_options(-std=c++17)
 add_compile_definitions(SOPHUS_USE_BASIC_LOGGING)
 
-set( CMAKE_CXX_FLAGS "-std=c++17 -O3" )
+set( CMAKE_CXX_FLAGS "-std=c++17 -O1" )
+# set( CMAKE_CXX_FLAGS "-std=c++17 -O3" )
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions" )
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +14,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread -std=c++0x -std=c++17 -fexceptions")
 add_definitions(-DMP_EN)
 add_definitions(-DMP_PROC_NUM=1)
+
+include_directories(/home/larrydong/voxelmap_fastlio_ws/src/my_ros_debugger)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp

@@ -45,6 +45,7 @@ public:
         main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
         voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
         // 这行代码会启动之前创建的定时器 voxel_map_loop。启动后，定时器开始按照设定的 5 秒间隔调用回调函数 LIONode::voxelTimerCB
+        // This loop shows the marker at a low frequency.
         if (config.publish_voxel_map)
             voxel_map_loop.start();
     }
@@ -165,22 +166,28 @@ public:
         return true;
     }
 
+
     void mainCB(const ros::TimerEvent &e)
     {
         if (!syncPackage())
             return;
+        
+        // MAIN FUNCTION
         map_builder.process(sync_pack);
+
         if (map_builder.status != lio::LIOStatus::LIO_MAPPING)
             return;
         state = map_builder.kf.x();
+
         br.sendTransform(eigen2Transform(state.rot, state.pos, config.map_frame, config.body_frame, sync_pack.cloud_end_time));
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr body_cloud = map_builder.lidarToBody(sync_pack.cloud);
         publishCloud(body_cloud_pub, body_cloud, config.body_frame, sync_pack.cloud_end_time);
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr world_cloud = map_builder.lidarToWorld(sync_pack.cloud);
         publishCloud(world_cloud_pub, world_cloud, config.map_frame, sync_pack.cloud_end_time);
-
         publishCloudWithOdom(body_cloud, config.map_frame, config.body_frame, sync_pack.cloud_end_time);
     }
+
+
     void voxelTimerCB(const ros::TimerEvent &event)
     {
         std::shared_ptr<lio::VoxelMap> voxel_map = map_builder.map;

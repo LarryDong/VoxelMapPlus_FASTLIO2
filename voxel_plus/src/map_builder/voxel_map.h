@@ -82,7 +82,9 @@ namespace lio
         void merge();
 
     public:
-        static uint64_t count;
+        static uint64_t count;              // This count is static, only "group_id" is valid for index.
+        uint64_t group_id;
+
         int max_point_thresh;
         int update_point_thresh;
         double plane_thresh;
@@ -91,10 +93,9 @@ namespace lio
         bool update_enable;
         int newly_add_point;
         bool merged;
-        uint64_t group_id;
         std::vector<PointWithCov> temp_points;
         VoxelKey position;
-        VoxelMap *map;
+        VoxelMap *map;                      // TODO: Why VoxelGrid has a VoxelMap??? Seems not used?
         std::shared_ptr<Plane> plane;
         Eigen::Vector3d center;
         std::list<VoxelKey>::iterator cache_it;
@@ -117,6 +118,9 @@ namespace lio
         void update(std::vector<PointWithCov> &pvs);
 
         bool buildResidual(ResidualData &data, std::shared_ptr<VoxelGrid> voxel_grid);
+
+        // DONGYAN ADDED
+        void printInfo(bool verbose=false);
 
     public:
         int max_point_thresh;

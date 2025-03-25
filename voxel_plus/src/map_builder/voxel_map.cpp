@@ -1,4 +1,7 @@
 #include "voxel_map.h"
+#include "my_ros_debugger.hpp"
+
+using namespace std;
 
 namespace lio
 {
@@ -52,14 +55,14 @@ namespace lio
     */
     void VoxelGrid::pushPoint(const PointWithCov &pv)
     {
-        if (!is_init)
-        {
+
+        if (!is_init){  // if not inited, newly_add_point is always 0.
             addToPlane(pv);
             temp_points.push_back(pv);
             updatePlane();
         }
-        else
-        {
+
+        else{
             if (is_plane)
             {
                 if (update_enable)
@@ -210,13 +213,15 @@ namespace lio
 
     void VoxelMap::build(std::vector<PointWithCov> &pvs)
     {
+        ROS_INFO("In VoxelMap:build.");
+
         for (PointWithCov &pv : pvs)
         {
             VoxelKey k = index(pv.point);
             auto it = featmap.find(k);
             if (it == featmap.end())
             {
-                featmap[k] = std::make_shared<VoxelGrid>(max_point_thresh, update_point_thresh, plane_thresh, k, this);
+                featmap[k] = std::make_shared<VoxelGrid>(max_point_thresh, update_point_thresh, plane_thresh, k, this);     // TODO: `this` map to VoxelGrid.
                 cache.push_front(k);
                 featmap[k]->cache_it = cache.begin();
 
@@ -287,4 +292,50 @@ namespace lio
         return data.is_valid;
     }
 
+    void VoxelMap::printInfo(bool verbose){
+        ROS_WARN("Print VoxelMap info: ");
+        if(verbose){
+            cout << "[Defaut config]. max_point_thresh: " << max_point_thresh <<", update_point_thresh: " << update_point_thresh << endl;
+            cout <<"                  plane_thresh: " << plane_thresh <<", voxel_size: "<< voxel_size << endl;
+            cout << "featmap size: " << featmap.size() << endl;
+            cout << "cache size: " << cache.size() << ", capacity: " << capacity << endl;
+            assert(featmap.size() == cache.size());
+            cout << "All featmap: --------------------------------------------------------------------------------" << endl;
+            // const std::pair<const VoxelKey, std::shared_ptr<VoxelGrid>>
+            auto it = featmap.begin();
+            int index = 0;
+            VoxelKey::Hasher hasher;
+            while (it != featmap.end()) {
+                const VoxelKey& voxelKey = it->first;
+                const std::shared_ptr<VoxelGrid>& vg_ptr = it->second;
+                auto center = vg_ptr->center.transpose();
+                cout << "Index in featmp: " << index << ", voxel id: " << vg_ptr->group_id
+                    << ", VoxelKey: (" << voxelKey.x << ", " << voxelKey.y << ", " << voxelKey.z << ") "
+                    << ", hasher: " << hasher(voxelKey)
+                    << ", center: " << vg_ptr->center[0] << ", " << vg_ptr->center[1] << ", " << vg_ptr->center[2] << ")." 
+                    << ", is_init: " << vg_ptr->is_init << ", is_plane: " << vg_ptr->is_plane
+                    << ", newly_add_point: " << vg_ptr->newly_add_point
+                    << ", update_enable: " << vg_ptr->update_enable
+                    << endl;
+                ++it;
+                ++index;
+            }
+        }
+        else{
+            assert(featmap.size() == cache.size());
+            int init_cnt = 0, plane_cnt = 0, update_cnt = 0;
+            for(const auto& item : featmap){
+                if(item.second->is_init)
+                    init_cnt++;
+                if(item.second->is_plane)
+                    plane_cnt++;
+                if(item.second->update_enable)
+                    update_cnt++;
+            }
+            cout << "VoxelMap's featmap size: " << featmap.size() << ". inited: " << init_cnt <<", plane: " << plane_cnt << ", update_enable: " << update_cnt << endl;
+        }
+    }
+
 } // namespace lio
+
+

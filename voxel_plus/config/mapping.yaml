@@ -9,7 +9,8 @@ publish_voxel_num: 2000
 
 
 scan_resolution: 0.1
-voxel_size: 0.4
+voxel_size: 1.0
+# voxel_size: 0.4
 map_capacity: 100000
 max_point_thresh: 100
 update_size_threshes: 20
