@@ -102,6 +102,7 @@ namespace lio
         static double merge_thresh_for_distance;
     };
 
+    // unordered_map<key, value, hash>，其中hash将key映射为hash。对于自定义类型的key，需要指定hash方式。
     typedef std::unordered_map<VoxelKey, std::shared_ptr<VoxelGrid>, VoxelKey::Hasher> Featmap;
 
     class VoxelMap

@@ -43,7 +43,8 @@ public:
         initPublishers();
         map_builder.loadConfig(lio_config);
         main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
-        voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);
+        voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
+        // 这行代码会启动之前创建的定时器 voxel_map_loop。启动后，定时器开始按照设定的 5 秒间隔调用回调函数 LIONode::voxelTimerCB
         if (config.publish_voxel_map)
             voxel_map_loop.start();
     }

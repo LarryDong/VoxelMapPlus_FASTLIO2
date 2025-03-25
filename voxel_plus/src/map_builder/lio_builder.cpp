@@ -209,10 +209,10 @@ namespace lio
 
             status = LIOStatus::LIO_MAPPING;
         }
-        else
+        else        // LIOStatus::LIO_MAPPING
         {
             undistortCloud(package);
-            if (config.scan_resolution > 0.0)
+            if (config.scan_resolution > 0.0)       // 用于降采样。默认0.1m
             {
                 scan_filter.setInputCloud(package.cloud);
                 scan_filter.filter(*lidar_cloud);
@@ -282,7 +282,7 @@ namespace lio
 
         for (int i = 0; i < size; i++)
         {
-            if (!data_group.residual_info[i].is_valid)
+            if (!data_group.residual_info[i].is_valid)  // 只有对应voxel是平面时，才是true
                 continue;
             effect_num++;
             J.setZero();

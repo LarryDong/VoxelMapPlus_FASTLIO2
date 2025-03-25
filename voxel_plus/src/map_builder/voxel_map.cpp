@@ -39,6 +39,17 @@ namespace lio
         temp_points.push_back(pv);
     }
 
+    /*  pushPoint：
+    1. 如果没有初始化，则加入plane；点数攒的足够多后，更新plane的参数
+    2. 如果已经初始化了：
+        2.1 如果是平面：
+            2.1.1 如果可以更新，则加入点；更新plane参数（点数足够时）
+            2.1.2 如果不能更新，即update_enable=false。对于这个代码，只有当点数足够多时不能够更新。此时考虑多个voxel的合并。
+        2.2 如果不是平面：
+            2.2.1 如果可以更新，则加入点，判断是否能够成为新的平面；
+            2.2.2 如果总点数很多了，则设置为不能够继续更新。
+
+    */
     void VoxelGrid::pushPoint(const PointWithCov &pv)
     {
         if (!is_init)
@@ -236,21 +247,22 @@ namespace lio
         {
             VoxelKey k = index(pv.point);
             auto it = featmap.find(k);
-            if (it == featmap.end())
+            if (it == featmap.end())        // 找不到，进行创建；
             {
                 featmap[k] = std::make_shared<VoxelGrid>(max_point_thresh, update_point_thresh, plane_thresh, k, this);
                 cache.push_front(k);
                 featmap[k]->cache_it = cache.begin();
-                if (cache.size() > capacity)
+                if (cache.size() > capacity)        // 创建时，数量过多，删除最早、没有更新过的voxel
                 {
                     featmap.erase(cache.back());
                     cache.pop_back();
                 }
             }
-            else
+            else                            // 能找到，将这个voxel往前摆放，这样维持总voxel数量不变时，直接删除pop_back()。
             {
                 cache.splice(cache.begin(), cache, featmap[k]->cache_it);
             }
+            // 这可不是简单的pushPoint，而是进行了 voxel的更新！
             featmap[k]->pushPoint(pv);
         }
     }

@@ -130,7 +130,7 @@ namespace kf
         Vector23d delta = Vector23d::Zero();
         for (size_t i = 0; i < max_iter_; i++)
         {
-            func_(x_, shared_data);
+            func_(x_, shared_data);                 // func_ 动态绑定了： sharedUpdateFunc
             H_.setZero();
             b_.setZero();
             delta = x_ - predict_x;
