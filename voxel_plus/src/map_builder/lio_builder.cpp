@@ -1,6 +1,11 @@
 #include "lio_builder.h"
 #include "my_ros_debugger.hpp"
 
+#include "feat_voxel_map.h"
+
+int g_scan_cnt = -1;
+extern int g_debug_featVoxelMap_init_cnt;
+
 namespace lio
 {
     void LIOBuilder::loadConfig(LIOConfig &_config)
@@ -15,6 +20,11 @@ namespace lio
             scan_filter.setLeafSize(config.scan_resolution, config.scan_resolution, config.scan_resolution);
 
         map = std::make_shared<VoxelMap>(config.max_point_thresh, config.update_size_thresh, config.plane_thresh, config.voxel_size, config.map_capacity);
+        
+
+        // Init my map.
+        my_map_ = std::make_shared<FeatVoxelMap>();
+
 
         VoxelGrid::merge_thresh_for_angle = config.merge_thresh_for_angle;
         VoxelGrid::merge_thresh_for_distance = config.merge_thresh_for_distance;
@@ -178,6 +188,18 @@ namespace lio
         ROS_INFO_ONCE("LIOBuilder::process.");
         
         map->printInfo(false);
+        
+
+        /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
+        g_scan_cnt++;
+        if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
+            ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
+            my_map_->buildFeatVoxelMap(map);
+        }
+
+
+        /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
+
 
         if (status == LIOStatus::IMU_INIT)
         {

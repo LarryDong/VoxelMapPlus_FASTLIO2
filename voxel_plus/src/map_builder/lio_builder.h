@@ -4,6 +4,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 #include "voxel_map.h"
+#include "feat_voxel_map.h"
 
 namespace lio
 {
@@ -80,6 +81,11 @@ namespace lio
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr lidar_cloud;
         pcl::VoxelGrid<pcl::PointXYZINormal> scan_filter;
         std::shared_ptr<VoxelMap> map;
+
+        // Dongyan New
+        std::shared_ptr<FeatVoxelMap> my_map_;
+
+
     };
 
 } // namespace lio

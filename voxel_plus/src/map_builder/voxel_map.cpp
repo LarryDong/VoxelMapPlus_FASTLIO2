@@ -293,7 +293,7 @@ namespace lio
     }
 
     void VoxelMap::printInfo(bool verbose){
-        ROS_WARN("Print VoxelMap info: ");
+        // ROS_WARN("Print VoxelMap info: ");
         if(verbose){
             cout << "[Defaut config]. max_point_thresh: " << max_point_thresh <<", update_point_thresh: " << update_point_thresh << endl;
             cout <<"                  plane_thresh: " << plane_thresh <<", voxel_size: "<< voxel_size << endl;
@@ -332,7 +332,7 @@ namespace lio
                 if(item.second->update_enable)
                     update_cnt++;
             }
-            cout << "VoxelMap's featmap size: " << featmap.size() << ". inited: " << init_cnt <<", plane: " << plane_cnt << ", update_enable: " << update_cnt << endl;
+            cout << "[INFO] VoxelMap's featmap size: " << featmap.size() << ". inited: " << init_cnt <<", plane: " << plane_cnt << ", update_enable: " << update_cnt << endl;
         }
     }
 

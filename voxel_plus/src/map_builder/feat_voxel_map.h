@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <iostream>
 
+#include <ros/ros.h>
 #include "voxel_map.h"
 
 typedef Eigen::Vector3d V3D;
@@ -37,12 +38,13 @@ typedef std::unordered_map<VoxelKey, std::shared_ptr<FeatVoxelGrid>, VoxelKey::H
 class FeatVoxelMap{
 public:
     FeatVoxelMap(void);
-    void buildFeatVoxelMap(const VoxelMap*);
+    // void buildFeatVoxelMap(const VoxelMap*);
+    void buildFeatVoxelMap(const std::shared_ptr<VoxelMap>& map);    // use VoxelMap to create my featMap
     void printInfo(void);
 
 public:
     // void printInfo(bool verbose=false){return;}
-    MyFeatMap my_feat_map_;
+    MyFeatMap my_featmap_;
 
 public:
 
