@@ -46,6 +46,43 @@ void FeatVoxelGrid::printInfo(void){
 FeatVoxelMap::FeatVoxelMap(void){
     ROS_WARN("FeatVoxelMap is inited.");
     my_featmap_.clear();
+    save_folder_ = "/home/larrydong/Desktop/voxel_output/";
+}
+
+void FeatVoxelMap::saveToFile(void){
+    cout << "Write voxel info into folder: " << save_folder_ << endl;
+    VoxelKey::Hasher hasher;
+    string summary_folder = save_folder_ + "summary.csv";
+    std::ofstream out_summary(summary_folder);
+    if (!out_summary) {
+        // std::cerr << "[ERROR] Cannot open file: " << filename << std::endl;
+        my_ros_utility::color_cout("[VoxelMap Save Error] Cannot open file: " + summary_folder);
+        return;
+    }
+    out_summary << "hash-key,number-of-points,position-x,position-y,position-z" << endl;
+    for(auto item:my_featmap_){
+        string hash_key = std::to_string(hasher(item.first));
+        string filename = save_folder_ + hash_key + ".csv";
+        std::ofstream out_file(filename);
+        if (!out_file) {
+            // std::cerr << "[ERROR] Cannot open file: " << filename << std::endl;
+            my_ros_utility::color_cout("[VoxelMap Save Error] Cannot open file: " + filename);
+            return;
+        }
+        std::vector<V3D> pts = item.second->temp_points_;
+        for(auto p:pts){
+            out_file << p[0] << "," << p[1] << "," << p[2] << endl;
+        }
+        cout << "--> Written " << pts.size() << " points into voxel file: " << filename << endl;
+        out_file.close();
+
+        // write to summary file
+        // hash, num-of-points, position
+        out_summary << hash_key <<"," << pts.size() <<"," << item.second->position_ << endl;
+    }
+    out_summary.close();
+
+    cout << "[INFO] FeatVoxelMap save to file done. Total: " << my_featmap_.size() << endl;
 }
 
 
@@ -61,7 +98,7 @@ void FeatVoxelMap::printInfo(void){
     cout << "-------------------------------------------------------------" << endl;
 }
 
-
+// build map from vector3d points
 void FeatVoxelMap::buildFeatVoxelMap(const std::vector<V3D>& points){
 #ifdef DEBUG_INFO
     ROS_WARN("In `buildFeatVoxelMap`, using points.");
@@ -80,6 +117,13 @@ void FeatVoxelMap::buildFeatVoxelMap(const std::vector<V3D>& points){
     }
 }
 
+// build map from a PCL pointcloud.
+void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& map_ptr){
+    std::vector<V3D> pts;
+    for(const pcl::PointXYZINormal& p : map_ptr->points)
+        pts.push_back(V3D(p.x, p.y, p.z));
+    buildFeatVoxelMap(pts);
+}
 
 
 

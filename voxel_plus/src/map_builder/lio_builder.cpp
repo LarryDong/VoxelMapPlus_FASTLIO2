@@ -5,7 +5,7 @@
 
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
-
+extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
 
 
 namespace lio
@@ -193,11 +193,14 @@ namespace lio
         
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
-        // g_scan_cnt++;
-        // if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
-        //     ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
-        //     my_map_->buildFeatVoxelMap(map);
-        // }
+        g_scan_cnt++;
+        if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
+            ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
+            my_map_->buildFeatVoxelMap(g_global_pc);
+            my_map_->printInfo();
+            my_map_->saveToFile();
+            // std::abort();
+        }
 
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
@@ -243,8 +246,8 @@ namespace lio
 
             map->build(pv_list);
 
-            my_map_->buildFeatVoxelMap(v_pts);
-            my_map_->printInfo();
+            // my_map_->buildFeatVoxelMap(v_pts);
+            // my_map_->printInfo();
 
             status = LIOStatus::LIO_MAPPING;
             ROS_INFO("--> Map Inited. State-> LIO_MAPPING");
