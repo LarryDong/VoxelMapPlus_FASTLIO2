@@ -31,6 +31,12 @@ namespace lio
                 return ((((k.z) * HASH_P) % MAX_N + (k.y)) * HASH_P) % MAX_N + (k.x);
             }
         };
+
+        // Dongyan Added
+        friend std::ostream &operator<<(std::ostream &os, const VoxelKey &key){
+            os << "[ " << key.x << ", " << key.y << ", " << key.z << " ]";
+            return os;
+        }
     };
 
     struct PointWithCov

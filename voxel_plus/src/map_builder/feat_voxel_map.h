@@ -20,6 +20,8 @@ using namespace lio;
 class FeatVoxelGrid{
 public:
     FeatVoxelGrid(VoxelKey _position);
+    void printInfo(void);
+    void addPoint(const V3D& p);
 
 public: 
     static uint64_t count_;
@@ -38,13 +40,19 @@ typedef std::unordered_map<VoxelKey, std::shared_ptr<FeatVoxelGrid>, VoxelKey::H
 class FeatVoxelMap{
 public:
     FeatVoxelMap(void);
-    // void buildFeatVoxelMap(const VoxelMap*);
-    void buildFeatVoxelMap(const std::shared_ptr<VoxelMap>& map);    // use VoxelMap to create my featMap
+    // void buildFeatVoxelMap(const std::shared_ptr<VoxelMap>& map);    // use VoxelMap to create my featMap. Issue: No points info.
+    void buildFeatVoxelMap(const std::vector<V3D> &pts);
     void printInfo(void);
 
 public:
-    // void printInfo(bool verbose=false){return;}
     MyFeatMap my_featmap_;
+
+private:
+    inline VoxelKey calcVoxelKey(const Eigen::Vector3d &point){
+        const double voxel_size = 0.5;
+        Eigen::Vector3d idx = (point / voxel_size).array().floor();
+        return VoxelKey(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
+    }
 
 public:
 

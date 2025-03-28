@@ -45,6 +45,7 @@ geometry_msgs::TransformStamped eigen2Transform(const Eigen::Matrix3d &rot, cons
     transform.header.frame_id = frame_id;
     transform.header.stamp = ros::Time().fromSec(timestamp);
     transform.child_frame_id = child_frame_id;
+    std::cout << "frame_id: " << frame_id << ", child frame_id: " << child_frame_id << std::endl;
     transform.transform.translation.x = pos(0);
     transform.transform.translation.y = pos(1);
     transform.transform.translation.z = pos(2);

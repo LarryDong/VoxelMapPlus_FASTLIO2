@@ -9,6 +9,19 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include "interface/PointCloudWithOdom.h"
 
+
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
+pcl::VoxelGrid<pcl::PointXYZINormal> g_ds_filter;
+
+inline void addScanToWorldMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& point_world, float leaf_size = 0.05f){
+    *g_global_pc += *point_world;
+    g_ds_filter.setInputCloud(g_global_pc);
+    pcl::PointCloud<pcl::PointXYZINormal>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
+    g_ds_filter.filter(*temp_cloud);
+    g_global_pc->swap(*temp_cloud);
+}
+
+
 struct NodeConfig
 {
     std::string lidar_topic;
@@ -102,6 +115,7 @@ public:
         odom_pub = nh.advertise<nav_msgs::Odometry>("slam_odom", 1000);
         body_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("body_cloud", 1000);
         world_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("world_cloud", 1000);
+        pub_full_map = nh.advertise<sensor_msgs::PointCloud2>("full_map", 1000);
         voxel_map_pub = nh.advertise<visualization_msgs::MarkerArray>("voxel_map", 1000);
         pointcloud_with_odom_pub = nh.advertise<interface::PointCloudWithOdom>("cloud_with_odom", 1000);
     }
@@ -181,10 +195,18 @@ public:
 
         br.sendTransform(eigen2Transform(state.rot, state.pos, config.map_frame, config.body_frame, sync_pack.cloud_end_time));
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr body_cloud = map_builder.lidarToBody(sync_pack.cloud);
-        publishCloud(body_cloud_pub, body_cloud, config.body_frame, sync_pack.cloud_end_time);
+        // publishCloud(body_cloud_pub, body_cloud, config.body_frame, sync_pack.cloud_end_time);
+        publishCloud(body_cloud_pub, body_cloud, config.map_frame, sync_pack.cloud_end_time);       //~ change to map_frame, because body_cloud is in global 'map' frame
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr world_cloud = map_builder.lidarToWorld(sync_pack.cloud);
         publishCloud(world_cloud_pub, world_cloud, config.map_frame, sync_pack.cloud_end_time);
+        
+        // publish full pointcloud
+        addScanToWorldMap(world_cloud);     // add world_cloud to g_global_pc, and then downsampled.
+        publishCloud(pub_full_map, g_global_pc, config.map_frame, sync_pack.cloud_end_time);
+        
+        // this message type cannot be viewed by rviz.
         publishCloudWithOdom(body_cloud, config.map_frame, config.body_frame, sync_pack.cloud_end_time);
+
     }
 
 
@@ -254,6 +276,9 @@ public:
     ros::Publisher odom_pub;
     ros::Publisher body_cloud_pub;
     ros::Publisher world_cloud_pub;
+
+    ros::Publisher pub_full_map;
+
     ros::Publisher voxel_map_pub;
     ros::Publisher pointcloud_with_odom_pub;
 
@@ -267,6 +292,11 @@ public:
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "lio_node");
+
+    // init ds filter
+    double leaf_size = 0.05;
+    g_ds_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+
     LIONode lio_node;
     ros::spin();
     return 0;

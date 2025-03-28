@@ -6,6 +6,8 @@
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
 
+
+
 namespace lio
 {
     void LIOBuilder::loadConfig(LIOConfig &_config)
@@ -191,11 +193,11 @@ namespace lio
         
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
-        g_scan_cnt++;
-        if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
-            ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
-            my_map_->buildFeatVoxelMap(map);
-        }
+        // g_scan_cnt++;
+        // if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
+        //     ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
+        //     my_map_->buildFeatVoxelMap(map);
+        // }
 
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
@@ -218,6 +220,8 @@ namespace lio
             Eigen::Matrix3d r_wl = kf.x().rot * kf.x().rot_ext;
             Eigen::Vector3d p_wl = kf.x().rot * kf.x().pos_ext + kf.x().pos;
 
+            std::vector<V3D> v_pts;
+
             for (size_t i = 0; i < point_world->size(); i++)
             {
                 PointWithCov pv;
@@ -232,12 +236,19 @@ namespace lio
                             kf.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
                 pv.cov = point_cov;
                 pv_list.push_back(pv);
+
+                V3D p_world = V3D(point_world->points[i].x, point_world->points[i].y, point_world->points[i].z);
+                v_pts.push_back(p_world);
             }
 
             map->build(pv_list);
 
+            my_map_->buildFeatVoxelMap(v_pts);
+            my_map_->printInfo();
+
             status = LIOStatus::LIO_MAPPING;
             ROS_INFO("--> Map Inited. State-> LIO_MAPPING");
+
         }
         else        // LIOStatus::LIO_MAPPING
         {

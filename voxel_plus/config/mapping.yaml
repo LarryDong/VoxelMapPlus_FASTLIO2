@@ -1,7 +1,7 @@
 lidar_topic: /livox/lidar
 imu_topic: /livox/imu
 
-map_frame: lidar
+map_frame: map
 body_frame: body
 
 publish_voxel_map: true

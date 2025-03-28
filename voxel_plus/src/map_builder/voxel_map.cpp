@@ -332,7 +332,7 @@ namespace lio
                 if(item.second->update_enable)
                     update_cnt++;
             }
-            cout << "[INFO] VoxelMap's featmap size: " << featmap.size() << ". inited: " << init_cnt <<", plane: " << plane_cnt << ", update_enable: " << update_cnt << endl;
+            cout << "[VoxelMap INFO] VoxelMap's featmap size: " << featmap.size() << ". inited: " << init_cnt <<", plane: " << plane_cnt << ", update_enable: " << update_cnt << endl;
         }
     }
 
