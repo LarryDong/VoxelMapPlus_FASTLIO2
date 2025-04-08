@@ -52,6 +52,7 @@ FeatVoxelMap::FeatVoxelMap(void){
 void FeatVoxelMap::saveToFile(void){
     cout << "Write voxel info into folder: " << save_folder_ << endl;
     VoxelKey::Hasher hasher;
+    string voxel_folder = save_folder_ + "voxels/";
     string summary_folder = save_folder_ + "summary.csv";
     std::ofstream out_summary(summary_folder);
     if (!out_summary) {
@@ -62,7 +63,7 @@ void FeatVoxelMap::saveToFile(void){
     out_summary << "hash-key,number-of-points,position-x,position-y,position-z" << endl;
     for(auto item:my_featmap_){
         string hash_key = std::to_string(hasher(item.first));
-        string filename = save_folder_ + hash_key + ".csv";
+        string filename = voxel_folder + hash_key + ".csv";
         std::ofstream out_file(filename);
         if (!out_file) {
             // std::cerr << "[ERROR] Cannot open file: " << filename << std::endl;
@@ -78,7 +79,8 @@ void FeatVoxelMap::saveToFile(void){
 
         // write to summary file
         // hash, num-of-points, position
-        out_summary << hash_key <<"," << pts.size() <<"," << item.second->position_ << endl;
+        auto pos = item.second->position_;
+        out_summary << hash_key << "," << pts.size() << "," << pos.x << "," << pos.y << "," << pos.z << endl;
     }
     out_summary.close();
 
@@ -123,6 +125,53 @@ void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>
     for(const pcl::PointXYZINormal& p : map_ptr->points)
         pts.push_back(V3D(p.x, p.y, p.z));
     buildFeatVoxelMap(pts);
+}
+
+
+// TODO: @XEC provide residual and uncertainty.
+bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid){
+
+    ROS_WARN("[buildResidualByPointnet]");
+    data.is_valid = false;
+
+    // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
+    
+    V3D p2v;
+    double weight;
+
+    // normalize data to [0, 0.5] voxel.
+    std::vector<V3D> points;
+    V3D query_point;
+    const double voxel_size = 0.5;
+    V3D voxel_lower_bound = V3D(voxel_grid->position_.x, voxel_grid->position_.y, voxel_grid->position_.z) * voxel_size;
+    query_point = data.point_world - voxel_lower_bound;
+    for(auto p : voxel_grid->temp_points_){
+        points.push_back(p-voxel_lower_bound);
+    }
+
+    cout << "Predict p2v for voxel: " << voxel_grid->group_id_ << endl;
+    predictP2V(points, query_point, p2v, weight);       // TODO: XEC
+    cout << "Output p2v: " << p2v.transpose() << ", weight: " << weight << endl;
+
+    data.p2v = p2v;
+    data.weight = weight;
+
+    if (weight > 0.8)               // only for correct prediction.
+        data.is_valid = true;
+
+    return data.is_valid;
+}
+
+// TODO: XEC
+void FeatVoxelMap::predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight){
+    // just give a 0 value.
+    p2v = V3D(0,0,0);
+    weight = 0;
+
+    /*
+    model(points, pts)....
+    
+    */
 }
 
 

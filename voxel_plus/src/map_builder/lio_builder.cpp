@@ -25,7 +25,7 @@ namespace lio
         
 
         // Init my map.
-        my_map_ = std::make_shared<FeatVoxelMap>();
+        map_p2v_ = std::make_shared<FeatVoxelMap>();
 
 
         VoxelGrid::merge_thresh_for_angle = config.merge_thresh_for_angle;
@@ -196,9 +196,9 @@ namespace lio
         g_scan_cnt++;
         if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
             ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
-            my_map_->buildFeatVoxelMap(g_global_pc);
-            my_map_->printInfo();
-            my_map_->saveToFile();
+            map_p2v_->buildFeatVoxelMap(g_global_pc);
+            map_p2v_->printInfo();
+            // map_p2v_->saveToFile();
             // std::abort();
         }
 
@@ -246,8 +246,8 @@ namespace lio
 
             map->build(pv_list);
 
-            // my_map_->buildFeatVoxelMap(v_pts);
-            // my_map_->printInfo();
+            // map_p2v_->buildFeatVoxelMap(v_pts);
+            // map_p2v_->printInfo();
 
             status = LIOStatus::LIO_MAPPING;
             ROS_INFO("--> Map Inited. State-> LIO_MAPPING");
@@ -271,7 +271,10 @@ namespace lio
                 data_group.residual_info[i].point_lidar = Eigen::Vector3d(lidar_cloud->points[i].x, lidar_cloud->points[i].y, lidar_cloud->points[i].z);
                 calcBodyCov(data_group.residual_info[i].point_lidar, config.ranging_cov, config.angle_cov, data_group.residual_info[i].cov_lidar);
             }
+            
+            // In this function, calculate the residual and update the state.
             kf.update();
+
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(lidar_cloud);
             std::vector<PointWithCov> pv_list;
             Eigen::Matrix3d r_wl = kf.x().rot * kf.x().rot_ext;
@@ -291,7 +294,8 @@ namespace lio
         }
     }
 
-    void LIOBuilder::sharedUpdateFunc(kf::State &state, kf::SharedState &shared_state)
+    //~ Calculate residual, and H, b
+    void LIOBuilder::sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state)
     {
         Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
@@ -311,16 +315,17 @@ namespace lio
                                                     kf.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
             VoxelKey position = map->index(data_group.residual_info[i].point_world);
             auto iter = map->featmap.find(position);
-            if (iter != map->featmap.end())
+            if (iter != map->featmap.end())         //~ find query-point's corresponding voxel in map
             {
-                map->buildResidual(data_group.residual_info[i], iter->second);
+                // Paper, Section III.C eq(9), calculate `residual`, in residual_info.  
+                map->buildResidual(data_group.residual_info[i], iter->second);      //~ `iter->second` is query-point's voxel
             }
         }
 
         shared_state.H.setZero();
         shared_state.b.setZero();
-        Eigen::Matrix<double, 1, 12> J;
-        Eigen::Matrix<double, 1, 6> Jn;
+        Eigen::Matrix<double, 1, 12> J;     // J, eq(13), but not exactly same. J's state: [pos, rot, ext_pos, ext_rot]
+        Eigen::Matrix<double, 1, 6> Jn;     // Jn, eq(11): [(w_p − q)T , −nT]
 
         int effect_num = 0;
 
@@ -331,14 +336,18 @@ namespace lio
             effect_num++;
             J.setZero();
 
-            Eigen::Vector3d plane_norm = data_group.residual_info[i].plane_norm;
+            Eigen::Vector3d plane_norm = data_group.residual_info[i].plane_norm;            //~ plane_norm  --> P2V
 
+            // Jn, eq(11)'s first two (1x3 vector) part, corresponding to \Sigma_{ni, qi}
             Jn.block<1, 3>(0, 0) = (data_group.residual_info[i].point_world - data_group.residual_info[i].plane_mean).transpose();
             Jn.block<1, 3>(0, 3) = -plane_norm.transpose();
-            double r_cov = Jn * data_group.residual_info[i].plane_cov * Jn.transpose();
-            r_cov += plane_norm.transpose() * r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() * plane_norm;
+            
+            //~ r_cov  -->  P2V's weight
+            // r_cov is \Sigma_{wi} in eq(10), di~N{0, Sigma_{wi}}. Sigma_{wi} has 2/3 part: Sigma_{ni,qi} (plane uncertainty) and Sigma_p (point uncertainty).
+            double r_cov = Jn * data_group.residual_info[i].plane_cov * Jn.transpose();                                         // calculate Jn*Sigma_{ni,qi}*Jn', the first 2 part
+            r_cov += plane_norm.transpose() * r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() * plane_norm;     // calculate n^T * Sigma_p * n
 
-            double r_info = r_cov < 0.0002 ? 5000 : 1.0 / r_cov;
+            double r_info = r_cov < 0.0002 ? 5000 : 1.0 / r_cov;            // r_info = 1/r_cov --> information matrix = 1/covariance
             J.block<1, 3>(0, 0) = plane_norm.transpose();
             J.block<1, 3>(0, 3) = -plane_norm.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
             if (config.estimate_ext)
@@ -354,4 +363,60 @@ namespace lio
         // std::cout << "==================: " << effect_num << std::endl;
     }
 
+    /////////////////////////////////////////////////////////////////////////////////  P2V  /////////////////////////////////////////////////////////////////////////////////
+    // new update function using FeatVoxelMap providing p2v and cov.
+    void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){
+        Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
+        Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
+        int size = lidar_cloud->size();
+
+        for(int i=0; i<size; ++i){
+            data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
+            Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
+            data_group.residual_info[i].cov_world = r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() +
+                                                    point_crossmat * kf.P().block<3, 3>(kf::IESKF::R_ID, kf::IESKF::R_ID) * point_crossmat.transpose() +
+                                                    kf.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
+            
+            // change to my new feat_map
+            VoxelKey position = map_p2v_->calcVoxelKey(data_group.residual_info[i].point_world);
+            auto iter = map_p2v_->my_featmap_.find(position);
+            if (iter != map_p2v_->my_featmap_.end())
+            {
+                //~ get p2v, weight. 
+                map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
+            }
+        }
+
+        shared_state.H.setZero();
+        shared_state.b.setZero();
+        Eigen::Matrix<double, 1, 12> J;     // J, eq(13), but not exactly same. J's state: [pos, rot, ext_pos, ext_rot]
+        // Eigen::Matrix<double, 1, 6> Jn;      // Jn is not necessary, which cov is provided by model.
+
+        int effect_num = 0;
+
+        for (int i = 0; i < size; i++)
+        {
+            if (!data_group.residual_info[i].is_valid)  // 只有对应voxel是平面时，才是true
+                continue;
+            effect_num++;
+            J.setZero();
+            
+            double r_info = data_group.residual_info[i].weight;     // TODO: use 1/weight or weight?
+
+            J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();
+            J.block<1, 3>(0, 3) = -data_group.residual_info[i].p2v.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
+            // if (config.estimate_ext)
+            // {
+            //     J.block<1, 3>(0, 6) = -plane_norm.transpose() * r_wl * Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
+            //     J.block<1, 3>(0, 9) = plane_norm.transpose() * state.rot;
+            // }
+            shared_state.H += J.transpose() * r_info * J;
+            double residual = data_group.residual_info[i].p2v.norm();
+            cout << "P2v residual: " << residual << endl;
+            shared_state.b += J.transpose() * r_info * residual;
+        }
+        if (effect_num < 1)
+            std::cout << "NO EFFECTIVE POINT";
+        // std::cout << "==================: " << effect_num << std::endl;
+    }
 }

@@ -6,6 +6,8 @@
 #include "voxel_map.h"
 #include "feat_voxel_map.h"
 
+using namespace std;
+
 namespace lio
 {
     enum LIOStatus
@@ -67,11 +69,13 @@ namespace lio
 
         void process(SyncPackage &package);
 
-        void sharedUpdateFunc(kf::State &state, kf::SharedState &shared_state);
+        void sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state);       // state is not changed. So change to const.
+        void sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state);       // new!
 
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr lidarToWorld(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud);
 
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr lidarToBody(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud);
+
 
     public:
         kf::IESKF kf;
@@ -83,7 +87,8 @@ namespace lio
         std::shared_ptr<VoxelMap> map;
 
         // Dongyan New
-        std::shared_ptr<FeatVoxelMap> my_map_;
+        LIODataGroup data_group_p2v_;
+        std::shared_ptr<FeatVoxelMap> map_p2v_;     // 
 
 
     };

@@ -52,16 +52,24 @@ public:
     void printInfo(void);
     void saveToFile(void);
 
-public:
-    MyFeatMap my_featmap_;
-
-private:
-
     inline VoxelKey calcVoxelKey(const Eigen::Vector3d &point){
         const double voxel_size = 0.5;
         Eigen::Vector3d idx = (point / voxel_size).array().floor();
         return VoxelKey(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
     }
+
+    bool buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid);
+
+    // TODO: @XEC add a function to predict p2v, and weight
+    void predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight);
+    
+    
+public:
+    MyFeatMap my_featmap_;
+
+
+private:
+
 
     std::string save_folder_;           // give a folder to save the output;
 

@@ -1,6 +1,10 @@
 #pragma once
 #include <Eigen/Core>
 #include <sophus/so3.hpp>
+
+#include <iostream>
+using std::cout, std::endl;
+
 namespace kf
 {
     const double GRAVITY = 9.81;
@@ -59,6 +63,27 @@ namespace kf
         Matrix3x2d getMx(const Eigen::Vector2d &res) const;
 
         Matrix2x3d getNx() const;
+
+        inline State& operator=(const State& other) {
+            if (this != &other) {  // 防止自赋值
+                pos = other.pos;
+                rot = other.rot;
+                rot_ext = other.rot_ext;
+                pos_ext = other.pos_ext;
+                vel = other.vel;
+                bg = other.bg;
+                ba = other.ba;
+                g = other.g;
+            }
+            return *this;
+        }
+
+        inline void printInfo(const std::string& info){
+            cout << info << endl;
+            cout << "Pos: " << pos.transpose() << endl;
+            cout << "Rot: \n" << rot.transpose() << endl;
+        }
+
     };
     struct Input
     {
@@ -90,6 +115,7 @@ namespace kf
         Matrix23d &P() { return P_; }
 
         void set_share_function(measure_func func) { func_ = func; }
+        void set_share_function_p2v(measure_func func) { func_p2v_ = func; }
 
         void change_P(Matrix23d &P) { P_ = P; }
 
@@ -103,6 +129,7 @@ namespace kf
         State x_;
         Matrix23d P_;
         measure_func func_;
+        measure_func func_p2v_;     //~ p2v measurement function
         Matrix23d H_;
         Vector23d b_;
         Matrix23d F_;

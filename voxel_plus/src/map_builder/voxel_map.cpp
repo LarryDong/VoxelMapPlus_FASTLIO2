@@ -272,15 +272,16 @@ namespace lio
         }
     }
 
+    //~ Paper <Efficient and Probabilistic Adaptive Voxel Mapping for Accurate Online LiDAR Odometry>, Sec III.C
     bool VoxelMap::buildResidual(ResidualData &data, std::shared_ptr<VoxelGrid> voxel_grid)
     {
         data.is_valid = false;
         if (voxel_grid->is_plane)
         {
-            Eigen::Vector3d p2m = (data.point_world - voxel_grid->plane->mean);
+            Eigen::Vector3d p2m = (data.point_world - voxel_grid->plane->mean);     //~ point to plane mean, an arbitray vector.
             data.plane_norm = voxel_grid->plane->norm;
             data.plane_mean = voxel_grid->plane->mean;
-            data.residual = data.plane_norm.dot(p2m);
+            data.residual = data.plane_norm.dot(p2m);       // eq(9)
             Eigen::Matrix<double, 1, 6> J_nq;
             J_nq.block<1, 3>(0, 0) = p2m;
             J_nq.block<1, 3>(0, 3) = -data.plane_norm;

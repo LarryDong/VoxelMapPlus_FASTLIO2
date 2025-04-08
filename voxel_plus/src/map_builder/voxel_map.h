@@ -61,13 +61,17 @@ namespace lio
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Eigen::Vector3d point_lidar;
         Eigen::Vector3d point_world;
-        Eigen::Vector3d plane_mean;
+        Eigen::Vector3d plane_mean;     // center of the plane, for any p2plane vector.
         Eigen::Vector3d plane_norm;
         Eigen::Matrix<double, 6, 6> plane_cov;
         Eigen::Matrix3d cov_lidar;
         Eigen::Matrix3d cov_world;
         bool is_valid = false;
         double residual = 0.0;
+
+        // p2v new state
+        Eigen::Vector3d p2v = Eigen::Vector3d(0,0,0);       // then length of p2v is same to `residual`, the direction of p2v is `plane_norm`
+        double weight = 0.0;        // weight predicted by p2v-net -->  {plane_cov + point_cov(R=0.0001)}
     };
 
     class VoxelMap;
