@@ -35,6 +35,9 @@ namespace lio
         kf.set_share_function(
             [this](kf::State &s, kf::SharedState &d)
             { sharedUpdateFunc(s, d); });
+        kf.set_share_function_p2v(
+            [this](kf::State &s, kf::SharedState &d)
+            { sharedUpdateFunc_p2v(s, d); });
         data_group.residual_info.resize(10000);
     }
 
@@ -348,6 +351,8 @@ namespace lio
             r_cov += plane_norm.transpose() * r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() * plane_norm;     // calculate n^T * Sigma_p * n
 
             double r_info = r_cov < 0.0002 ? 5000 : 1.0 / r_cov;            // r_info = 1/r_cov --> information matrix = 1/covariance
+
+            // cout << "[Debug] r_info for original method: " << r_info << endl;        // 0.0x 到 5000 都出现过
             J.block<1, 3>(0, 0) = plane_norm.transpose();
             J.block<1, 3>(0, 3) = -plane_norm.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
             if (config.estimate_ext)
@@ -366,6 +371,7 @@ namespace lio
     /////////////////////////////////////////////////////////////////////////////////  P2V  /////////////////////////////////////////////////////////////////////////////////
     // new update function using FeatVoxelMap providing p2v and cov.
     void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){
+
         Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int size = lidar_cloud->size();
@@ -401,7 +407,9 @@ namespace lio
             effect_num++;
             J.setZero();
             
-            double r_info = data_group.residual_info[i].weight;     // TODO: use 1/weight or weight?
+            double r_info = data_group.residual_info[i].weight;
+            // TODO: original, r_info <5000,
+            r_info = r_info * 5000;         // scale-up. TODO: nor verified.
 
             J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();
             J.block<1, 3>(0, 3) = -data_group.residual_info[i].p2v.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
@@ -412,7 +420,7 @@ namespace lio
             // }
             shared_state.H += J.transpose() * r_info * J;
             double residual = data_group.residual_info[i].p2v.norm();
-            cout << "P2v residual: " << residual << endl;
+            // cout << "P2v residual: " << residual << endl;
             shared_state.b += J.transpose() * r_info * residual;
         }
         if (effect_num < 1)

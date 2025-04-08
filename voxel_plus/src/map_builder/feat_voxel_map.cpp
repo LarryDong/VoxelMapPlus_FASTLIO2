@@ -131,7 +131,7 @@ void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>
 // TODO: @XEC provide residual and uncertainty.
 bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid){
 
-    ROS_WARN("[buildResidualByPointnet]");
+    ROS_WARN_ONCE("Called `buildResidualByPointnet`");
     data.is_valid = false;
 
     // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
@@ -149,9 +149,8 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
         points.push_back(p-voxel_lower_bound);
     }
 
-    cout << "Predict p2v for voxel: " << voxel_grid->group_id_ << endl;
     predictP2V(points, query_point, p2v, weight);       // TODO: XEC
-    cout << "Output p2v: " << p2v.transpose() << ", weight: " << weight << endl;
+    // cout << "Voxel : " << voxel_grid->group_id_ <<", predicted p2v: " << p2v.transpose() << ", weight: " << weight << endl;
 
     data.p2v = p2v;
     data.weight = weight;
@@ -161,6 +160,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
 
     return data.is_valid;
 }
+
 
 // TODO: XEC
 void FeatVoxelMap::predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight){
