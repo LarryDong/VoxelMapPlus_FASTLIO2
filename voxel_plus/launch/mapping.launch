@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="rviz" default="false" />
+    <arg name="rviz" default="true" />
 
     <node pkg="voxel_plus" type="lio_node" name="lio_node" output="screen">
         <rosparam command="load" file="$(find voxel_plus)/config/mapping.yaml" />

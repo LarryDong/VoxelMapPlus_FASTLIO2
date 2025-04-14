@@ -46,6 +46,9 @@ void FeatVoxelGrid::printInfo(void){
 FeatVoxelMap::FeatVoxelMap(void){
     ROS_WARN("FeatVoxelMap is inited.");
     my_featmap_.clear();
+
+    p2v_model_.loadModel("/home/larry/featVoxelMap_ws/src/VoxelMapPlus_FASTLIO2/checkpoint/best_voxel.pt");
+
     save_folder_ = "/home/larrydong/Desktop/voxel_output/";
 }
 
@@ -149,7 +152,11 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
         points.push_back(p-voxel_lower_bound);
     }
 
-    predictP2V(points, query_point, p2v, weight);       // TODO: XEC
+
+    p2v_model_.predict(points, query_point, p2v, weight);
+
+    
+    //  (points, query_point, p2v, weight);       // TODO: XEC
     // cout << "Voxel : " << voxel_grid->group_id_ <<", predicted p2v: " << p2v.transpose() << ", weight: " << weight << endl;
 
     data.p2v = p2v;
@@ -160,20 +167,6 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
 
     return data.is_valid;
 }
-
-
-// TODO: XEC
-void FeatVoxelMap::predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight){
-    // just give a 0 value.
-    p2v = V3D(0,0,0);
-    weight = 0;
-
-    /*
-    model(points, pts)....
-    
-    */
-}
-
 
 
 // Not used codes.

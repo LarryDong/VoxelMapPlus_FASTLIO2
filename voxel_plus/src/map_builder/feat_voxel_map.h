@@ -8,10 +8,13 @@
 #include <iostream>
 
 #include <ros/ros.h>
-#include "voxel_map.h"
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+
+#include "voxel_map.h"
+#include "p2v_model.h"
+
 
 typedef Eigen::Vector3d V3D;
 
@@ -60,12 +63,13 @@ public:
 
     bool buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid);
 
-    // TODO: @XEC add a function to predict p2v, and weight
-    void predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight);
+    // // TODO: @XEC add a function to predict p2v, and weight
+    // void predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight);
     
     
 public:
     MyFeatMap my_featmap_;
+    P2VModel p2v_model_;
 
 
 private:

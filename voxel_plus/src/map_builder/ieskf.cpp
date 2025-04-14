@@ -158,7 +158,7 @@ namespace kf
 
         // print result.
         State original_x = x_;
-        original_x.printInfo("------------- [Old] State Estimation. -------------");
+        // original_x.printInfo("------------- [Old] State Estimation. -------------");
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
 
         
@@ -197,7 +197,7 @@ namespace kf
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
         State new_x = x_;
-        new_x.printInfo("------------- [P2V] State Estimation. -------------");
+        // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 
         // Select which state to use
