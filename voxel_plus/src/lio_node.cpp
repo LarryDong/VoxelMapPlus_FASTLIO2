@@ -9,8 +9,11 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include "interface/PointCloudWithOdom.h"
 
+#include <geometry_msgs/PoseStamped.h>
+
 
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_fullvoxelmap_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::VoxelGrid<pcl::PointXYZINormal> g_ds_filter;
 
 inline void addScanToWorldMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& point_world, float leaf_size = 0.05f){
@@ -118,6 +121,8 @@ public:
         pub_full_map = nh.advertise<sensor_msgs::PointCloud2>("full_map", 1000);
         voxel_map_pub = nh.advertise<visualization_msgs::MarkerArray>("voxel_map", 1000);
         pointcloud_with_odom_pub = nh.advertise<interface::PointCloudWithOdom>("cloud_with_odom", 1000);
+
+        pub_featvoxelmap_ = nh.advertise<sensor_msgs::PointCloud2>("feat_voxel_map", 1000);
     }
 
     void imuCB(const sensor_msgs::Imu::ConstPtr msg)
@@ -203,6 +208,44 @@ public:
         // publish full pointcloud
         addScanToWorldMap(world_cloud);     // add world_cloud to g_global_pc, and then downsampled.
         publishCloud(pub_full_map, g_global_pc, config.map_frame, sync_pack.cloud_end_time);
+
+
+
+        //////////////////////////////////////////////////////  publish full featvoxelmap  //////////////////////////////////////////////////////
+        g_fullvoxelmap_pc->points.resize(0);
+        auto feat_map = map_builder.map_p2v_->my_featmap_;
+        for(const auto& pair : feat_map){
+            int n_points = pair.second->temp_points_.size();
+            double intensity = 0.0f;            // intensity: 0.25, 0.5, 0.75, 1
+            // if(n_points<25)
+            //     intensity = 0.25;
+            // else if(n_points >= 25 && n_points < 50)
+            //     intensity = 0.5;
+            // else if(n_points >=50 && n_points < 75)
+            //     intensity = 0.75;
+            // else
+            //     intensity = 1;
+            intensity = float(n_points) / 100.0f;
+            if (intensity>1)
+                intensity = 1;
+
+            for(const auto& v3d_point : pair.second->temp_points_){
+                pcl::PointXYZINormal point;
+                point.x = v3d_point[0];
+                point.y = v3d_point[1];
+                point.z = v3d_point[2];
+                point.intensity = intensity;
+                g_fullvoxelmap_pc->points.push_back(point);
+            }
+        }
+        pub_featvoxelmap_.publish(pcl2msg(g_fullvoxelmap_pc, config.map_frame, sync_pack.cloud_end_time));
+
+        // publish the odometry
+        publishOdom(config.map_frame, sync_pack.cloud_end_time);
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+
         
         // this message type cannot be viewed by rviz.
         publishCloudWithOdom(body_cloud, config.map_frame, config.body_frame, sync_pack.cloud_end_time);
@@ -225,6 +268,31 @@ public:
         if (pub.getNumSubscribers() < 1)
             return;
         pub.publish(pcl2msg(cloud, frame_id, time));
+    }
+
+
+    //~ publish odom only
+    void publishOdom(const std::string& frame_id, const double &time){
+        nav_msgs::Odometry odom_msg;
+
+        odom_msg.header.stamp = ros::Time().fromSec(time);
+        odom_msg.header.frame_id = frame_id;
+
+        // Position
+        odom_msg.pose.pose.position.x = state.pos.x();
+        odom_msg.pose.pose.position.y = state.pos.y();
+        odom_msg.pose.pose.position.z = state.pos.z();
+        
+        Eigen::Quaterniond q(state.rot);
+
+        // Orientation
+        odom_msg.pose.pose.orientation.w = q.w();
+        odom_msg.pose.pose.orientation.x = q.x();
+        odom_msg.pose.pose.orientation.y = q.y();
+        odom_msg.pose.pose.orientation.z = q.z();
+
+        odom_pub.publish(odom_msg);
+    
     }
 
     void publishCloudWithOdom(pcl::PointCloud<pcl::PointXYZINormal>::Ptr _cloud, std::string &_frame_id, std::string &_child_frame, double _timestamp)
@@ -287,6 +355,8 @@ public:
     lio::LIOConfig lio_config;
 
     kf::State state;
+
+    ros::Publisher pub_featvoxelmap_;
 };
 
 int main(int argc, char **argv)

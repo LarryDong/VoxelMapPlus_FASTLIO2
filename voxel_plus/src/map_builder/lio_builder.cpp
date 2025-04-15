@@ -6,6 +6,7 @@
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
 extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
+extern int g_debug_prediction_cnt;
 
 
 namespace lio
@@ -201,6 +202,7 @@ namespace lio
             ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
             map_p2v_->buildFeatVoxelMap(g_global_pc);
             map_p2v_->printInfo();
+            map_p2v_->is_inited_ = true;
             // map_p2v_->saveToFile();
             // std::abort();
         }
@@ -280,6 +282,7 @@ namespace lio
 
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(lidar_cloud);
             std::vector<PointWithCov> pv_list;
+            std::vector<V3D> v_list;                // save my own format.
             Eigen::Matrix3d r_wl = kf.x().rot * kf.x().rot_ext;
             Eigen::Vector3d p_wl = kf.x().rot * kf.x().pos_ext + kf.x().pos;
             for (int i = 0; i < size; i++)
@@ -292,8 +295,22 @@ namespace lio
                          point_crossmat * kf.P().block<3, 3>(kf::IESKF::R_ID, kf::IESKF::R_ID) * point_crossmat.transpose() +
                          kf.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
                 pv_list.push_back(pv);
+                
+                v_list.push_back(pv.point);
             }
             map->update(pv_list);
+
+            // My featmap update
+            if(map_p2v_->is_inited_){
+                // TODO:
+                ROS_WARN("map_p2v_ update");
+                map_p2v_->printInfo("Before update.");
+                map_p2v_->update(v_list);
+                ROS_WARN("map_p2v_ update done");
+                map_p2v_->printInfo("After update.");
+            }
+            
+
         }
     }
 
@@ -370,13 +387,20 @@ namespace lio
 
     /////////////////////////////////////////////////////////////////////////////////  P2V  /////////////////////////////////////////////////////////////////////////////////
     // new update function using FeatVoxelMap providing p2v and cov.
-    void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){
+    void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){       // `func_p2v_`
+
+        my_ros_utility::MyTimer timer;
+        timer.tic();
+
+        ROS_INFO("Call `sharedUpdateFunc_p2v`");
 
         Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
-        int size = lidar_cloud->size();
+        int lidar_points_size = lidar_cloud->size();
 
-        for(int i=0; i<size; ++i){
+        int valid_predict_cnt = 0;      // only  points in voxel > 50 are valid predict.
+
+        for(int i=0; i<lidar_points_size; ++i){
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
             data_group.residual_info[i].cov_world = r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() +
@@ -390,8 +414,34 @@ namespace lio
             {
                 //~ get p2v, weight. 
                 map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
+                std::shared_ptr<FeatVoxelGrid> vg = iter->second;
+                if(vg->temp_points_.size() >= vg->extract_feat_threshold_){
+                    valid_predict_cnt++;
+                }
+
             }
         }
+        double t0 = timer.toc();
+        cout << "[sharedUpdateFunc_p2v] Total residual number: " << lidar_points_size <<", residual calculation time: " << t0 << endl;
+        cout <<"[sharedUpdateFunc_p2v] Total 'valid' query points: " << valid_predict_cnt <<", average  prediction time: " << t0/valid_predict_cnt << endl; 
+        cout <<"Prediction cnt: " << g_debug_prediction_cnt << endl;
+        g_debug_prediction_cnt = 0;
+
+
+        ///////////////////////////////////////////////// Check Build residual result /////////////////////////////////////////////////
+        int valid_residual_cnt = 0;
+
+        for(int i=0; i<data_group.residual_info.size(); ++i){
+            const ResidualData& res = data_group.residual_info[i];
+            if(res.is_valid){
+                valid_residual_cnt++;
+            }
+        }
+        cout  <<"Valid residual count: " << valid_residual_cnt << endl;
+
+
+        /////////////////////////////////////////////////
+
 
         shared_state.H.setZero();
         shared_state.b.setZero();
@@ -400,15 +450,15 @@ namespace lio
 
         int effect_num = 0;
 
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < lidar_points_size; i++)
         {
             if (!data_group.residual_info[i].is_valid)  // 只有对应voxel是平面时，才是true
                 continue;
             effect_num++;
             J.setZero();
             
-            double r_info = data_group.residual_info[i].weight;
-            // TODO: original, r_info <5000,
+            double weight = data_group.residual_info[i].weight;     // weight: 0.8 ~ 1, if valid.
+            double r_info = (weight-0.8)*5; // normalized to (0,1)
             r_info = r_info * 5000;         // scale-up. TODO: nor verified.
 
             J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();
@@ -424,7 +474,7 @@ namespace lio
             shared_state.b += J.transpose() * r_info * residual;
         }
         if (effect_num < 1)
-            std::cout << "NO EFFECTIVE POINT";
+            std::cout << "NO EFFECTIVE POINT" << std::endl;
         // std::cout << "==================: " << effect_num << std::endl;
     }
 }

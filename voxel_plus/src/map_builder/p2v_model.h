@@ -22,9 +22,7 @@ class P2VModel {
 public:
     P2VModel(void){;}
     void loadModel(std::string model_path);
-
-    void predict(const vector<Eigen::Vector3d>& points, const Eigen::Vector3d& query, Eigen::Vector3d& p2v_pred, double& weight);
-
+    void predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Vector3d& query, Eigen::Vector3d& p2v_pred, double& weight);
 
 
 public:

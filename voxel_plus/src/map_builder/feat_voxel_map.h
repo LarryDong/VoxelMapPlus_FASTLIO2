@@ -52,8 +52,10 @@ public:
 
     void buildFeatVoxelMap(const std::vector<V3D> &pts);
     void buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& map_ptr);
-    void printInfo(void);
+    void printInfo(const std::string &info = "default");
     void saveToFile(void);
+
+    void update(const std::vector<V3D> &pts);
 
     inline VoxelKey calcVoxelKey(const Eigen::Vector3d &point){
         const double voxel_size = 0.5;
@@ -65,12 +67,17 @@ public:
 
     // // TODO: @XEC add a function to predict p2v, and weight
     // void predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight);
+
+
+    void publishFullFeatVoxelMap(void);     // publish the full voxel map.
     
     
 public:
     MyFeatMap my_featmap_;
     P2VModel p2v_model_;
 
+    ros::Publisher pub_full_voxelmap_;
+    bool is_inited_;                    // if the whole feature map is inited?
 
 private:
 

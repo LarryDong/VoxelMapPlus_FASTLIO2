@@ -6,7 +6,7 @@ using namespace lio;
 
 
 int g_debug_featVoxelMap_init_cnt = 20;      // when to create FeatVoxelMap
-
+int g_debug_prediction_cnt = 0;
 
 ////////////////////////////////////////////////////////////////////////
 //////////////////////// Voxel Grid
@@ -19,7 +19,7 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
 
     group_id_ = FeatVoxelGrid::count_++;
     is_feat_extracted_ = false;
-    extract_feat_threshold_ = 25;               // default: 25 poins to extract feat.
+    extract_feat_threshold_ = 100;               // default: 25 poins to extract feat.
     
     vector<V3D>().swap(temp_points_);
     temp_points_.reserve(4*extract_feat_threshold_);
@@ -50,6 +50,8 @@ FeatVoxelMap::FeatVoxelMap(void){
     p2v_model_.loadModel("/home/larry/featVoxelMap_ws/src/VoxelMapPlus_FASTLIO2/checkpoint/best_voxel.pt");
 
     save_folder_ = "/home/larrydong/Desktop/voxel_output/";
+    is_inited_ = false;
+
 }
 
 void FeatVoxelMap::saveToFile(void){
@@ -92,9 +94,9 @@ void FeatVoxelMap::saveToFile(void){
 
 
 
-void FeatVoxelMap::printInfo(void){
+void FeatVoxelMap::printInfo(const std::string& info){
     cout << "-------------------------------------------------------------" << endl;
-    ROS_WARN("Print FeatVoxelMap info: ");
+    cout << "Print FeatVoxelMap info: " << info << endl;
     cout << "Total FeatVoxelMap: " << my_featmap_.size() << endl;
     cout << "All VoxelGrid info: " << endl;
     for(auto vg:my_featmap_){
@@ -131,13 +133,19 @@ void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>
 }
 
 
+
 // TODO: @XEC provide residual and uncertainty.
 bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid){
 
     ROS_WARN_ONCE("Called `buildResidualByPointnet`");
+
+    // Timer
+
     data.is_valid = false;
 
     // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
+    if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)  // not enough points, return. (default:50)
+        return false;
     
     V3D p2v;
     double weight;
@@ -152,21 +160,34 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
         points.push_back(p-voxel_lower_bound);
     }
 
-
-    p2v_model_.predict(points, query_point, p2v, weight);
-
-    
-    //  (points, query_point, p2v, weight);       // TODO: XEC
-    // cout << "Voxel : " << voxel_grid->group_id_ <<", predicted p2v: " << p2v.transpose() << ", weight: " << weight << endl;
+    p2v_model_.predictP2V(points, query_point, p2v, weight);
+    g_debug_prediction_cnt++;
 
     data.p2v = p2v;
     data.weight = weight;
 
-    if (weight > 0.8)               // only for correct prediction.
+    if (weight > 0.5)               // only for correct prediction.
         data.is_valid = true;
 
     return data.is_valid;
 }
+
+
+
+void FeatVoxelMap::update(const std::vector<V3D> &pts){
+    ROS_WARN_ONCE("-------------> FeatVoxelMap::update   ");
+    for(const auto& p : pts){
+        
+        VoxelKey k = calcVoxelKey(p);
+        auto it = my_featmap_.find(k);
+        if (it == my_featmap_.end()){
+            // not found corresponding grid, create a new one.
+            my_featmap_[k] = std::make_shared<FeatVoxelGrid>(k);
+        }
+        my_featmap_[k]->addPoint(p);
+    }
+}
+
 
 
 // Not used codes.
