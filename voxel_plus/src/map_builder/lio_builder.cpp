@@ -278,7 +278,15 @@ namespace lio
             }
             
             // In this function, calculate the residual and update the state.
-            kf.update();
+            bool use_p2v = false;
+            if(map_p2v_->is_inited_){        // if inited, switch to p2v prediction.
+                use_p2v = true;
+                ROS_WARN("--> Using Switch to p2v prediction...");
+            }
+            else{
+                ROS_WARN("--> Waiting for init. Using original prediction.");
+            }
+            kf.update(use_p2v);
 
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(lidar_cloud);
             std::vector<PointWithCov> pv_list;
@@ -302,12 +310,11 @@ namespace lio
 
             // My featmap update
             if(map_p2v_->is_inited_){
-                // TODO:
-                ROS_WARN("map_p2v_ update");
-                map_p2v_->printInfo("Before update.");
+                // ROS_WARN("map_p2v_ update");
+                // map_p2v_->printInfo("Before update.");
                 map_p2v_->update(v_list);
-                ROS_WARN("map_p2v_ update done");
-                map_p2v_->printInfo("After update.");
+                // ROS_WARN("map_p2v_ update done");
+                // map_p2v_->printInfo("After update.");
             }
             
 

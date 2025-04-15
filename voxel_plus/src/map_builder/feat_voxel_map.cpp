@@ -19,7 +19,7 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
 
     group_id_ = FeatVoxelGrid::count_++;
     is_feat_extracted_ = false;
-    extract_feat_threshold_ = 100;               // default: 25 poins to extract feat.
+    extract_feat_threshold_ = 50;               // default: 25 poins to extract feat.
     
     vector<V3D>().swap(temp_points_);
     temp_points_.reserve(4*extract_feat_threshold_);
@@ -47,7 +47,7 @@ FeatVoxelMap::FeatVoxelMap(void){
     ROS_WARN("FeatVoxelMap is inited.");
     my_featmap_.clear();
 
-    p2v_model_.loadModel("/home/larry/featVoxelMap_ws/src/VoxelMapPlus_FASTLIO2/checkpoint/best_voxel.pt");
+    p2v_model_.loadModel("/home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt");
 
     save_folder_ = "/home/larrydong/Desktop/voxel_output/";
     is_inited_ = false;
@@ -166,7 +166,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     data.p2v = p2v;
     data.weight = weight;
 
-    if (weight > 0.5)               // only for correct prediction.
+    if (weight > 0.9)               // only for correct prediction.
         data.is_valid = true;
 
     return data.is_valid;

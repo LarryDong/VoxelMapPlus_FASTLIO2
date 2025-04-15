@@ -121,7 +121,7 @@ namespace kf
 
         void predict(const Input &inp, double dt, const Matrix12d &Q);
 
-        void update();
+        void update(bool use_p2v=false);
 
     private:
         size_t max_iter_ = 5;

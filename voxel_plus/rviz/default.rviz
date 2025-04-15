@@ -104,7 +104,7 @@ Visualization Manager:
       Color: 138; 226; 52
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: true
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -119,7 +119,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /lio_node/voxel_map
@@ -247,7 +247,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 16.09127426147461
+      Distance: 10.936087608337402
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -255,17 +255,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 2.1126785278320312
-        Y: 8.341320991516113
+        X: 2.0486016273498535
+        Y: 3.109574317932129
         Z: 0.0002640574239194393
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0247963666915894
+      Pitch: 1.5697963237762451
       Target Frame: map
-      Yaw: 1.6004058122634888
+      Yaw: 1.6204055547714233
     Saved: ~
 Window Geometry:
   Displays:
