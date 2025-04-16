@@ -42,7 +42,15 @@ namespace lio
         double merge_thresh_for_angle = 0.1;
         double merge_thresh_for_distance = 0.04;
         int map_capacity = 100000;
+
+
+        // dongyan new config
+        string model_file = "model_file.pt";        // p2v model file, xxx.pt
+        double init_time = 2.0f;                    // wait for some seconds to switch to p2v prediction.
+        double valid_weight_threshold = 0.8f;       // threshold > this value's weight can contribute to the residual
     };
+
+
     struct LIODataGroup
     {
         IMUData last_imu;

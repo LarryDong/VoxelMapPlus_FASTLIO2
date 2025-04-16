@@ -6,7 +6,6 @@ using namespace lio;
 
 
 int g_debug_featVoxelMap_init_cnt = 20;      // when to create FeatVoxelMap
-int g_debug_prediction_cnt = 0;
 
 ////////////////////////////////////////////////////////////////////////
 //////////////////////// Voxel Grid
@@ -43,16 +42,15 @@ void FeatVoxelGrid::printInfo(void){
 //////////////////////// Voxel Map
 ////////////////////////////////////////////////////////////////////////
 
-FeatVoxelMap::FeatVoxelMap(void){
+FeatVoxelMap::FeatVoxelMap(string model_file, double valid_weight_threshold){
     ROS_WARN("FeatVoxelMap is inited.");
     my_featmap_.clear();
-
-    p2v_model_.loadModel("/home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt");
-
+    p2v_model_.loadModel(model_file);
     save_folder_ = "/home/larrydong/Desktop/voxel_output/";
     is_inited_ = false;
-
+    valid_weight_threshold_ = valid_weight_threshold;
 }
+
 
 void FeatVoxelMap::saveToFile(void){
     cout << "Write voxel info into folder: " << save_folder_ << endl;
@@ -133,43 +131,34 @@ void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>
 }
 
 
-
-// TODO: @XEC provide residual and uncertainty.
+// return: true if >50 points; else false. 
+// weight: decide if "data.is_valid"
 bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid){
 
-    ROS_WARN_ONCE("Called `buildResidualByPointnet`");
-
-    // Timer
-
+    ROS_WARN_ONCE("Called `buildResidualByPointnet` (this only output once)");
     data.is_valid = false;
 
     // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
     if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)  // not enough points, return. (default:50)
         return false;
-    
-    V3D p2v;
-    double weight;
 
     // normalize data to [0, 0.5] voxel.
     std::vector<V3D> points;
+    points.reserve(voxel_grid->extract_feat_threshold_);
     V3D query_point;
     const double voxel_size = 0.5;
     V3D voxel_lower_bound = V3D(voxel_grid->position_.x, voxel_grid->position_.y, voxel_grid->position_.z) * voxel_size;
     query_point = data.point_world - voxel_lower_bound;
-    for(auto p : voxel_grid->temp_points_){
-        points.push_back(p-voxel_lower_bound);
+    for (auto p : voxel_grid->temp_points_){
+        points.push_back(p - voxel_lower_bound);
     }
 
-    p2v_model_.predictP2V(points, query_point, p2v, weight);
-    g_debug_prediction_cnt++;
+    p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
 
-    data.p2v = p2v;
-    data.weight = weight;
-
-    if (weight > 0.9)               // only for correct prediction.
+    if (data.weight > valid_weight_threshold_)       // only for correct prediction. default: 0.8
         data.is_valid = true;
 
-    return data.is_valid;
+    return true;
 }
 
 

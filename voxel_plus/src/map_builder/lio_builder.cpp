@@ -6,7 +6,6 @@
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
 extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
-extern int g_debug_prediction_cnt;
 
 
 namespace lio
@@ -26,7 +25,7 @@ namespace lio
         
 
         // Init my map.
-        map_p2v_ = std::make_shared<FeatVoxelMap>();
+        map_p2v_ = std::make_shared<FeatVoxelMap>(_config.model_file, _config.valid_weight_threshold);
 
 
         VoxelGrid::merge_thresh_for_angle = config.merge_thresh_for_angle;
@@ -198,7 +197,8 @@ namespace lio
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
         g_scan_cnt++;
-        if(g_scan_cnt == g_debug_featVoxelMap_init_cnt){
+        const int lidar_frequency = 10;
+        if(g_scan_cnt == config.init_time * lidar_frequency){
             ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
             map_p2v_->buildFeatVoxelMap(g_global_pc);
             map_p2v_->printInfo();
@@ -281,7 +281,7 @@ namespace lio
             bool use_p2v = false;
             if(map_p2v_->is_inited_){        // if inited, switch to p2v prediction.
                 use_p2v = true;
-                ROS_WARN("--> Using Switch to p2v prediction...");
+                ROS_WARN_ONCE("--> Using Switch to p2v prediction...");
             }
             else{
                 ROS_WARN("--> Waiting for init. Using original prediction.");
@@ -396,57 +396,41 @@ namespace lio
     // new update function using FeatVoxelMap providing p2v and cov.
     void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){       // `func_p2v_`
 
+        ROS_WARN_ONCE("Call `sharedUpdateFunc_p2v` (this only output once)");
+
         my_ros_utility::MyTimer timer;
         timer.tic();
-
-        ROS_INFO("Call `sharedUpdateFunc_p2v`");
 
         Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int lidar_points_size = lidar_cloud->size();
 
-        int valid_predict_cnt = 0;      // only  points in voxel > 50 are valid predict.
-
+        int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
         for(int i=0; i<lidar_points_size; ++i){
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
-            Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
-            data_group.residual_info[i].cov_world = r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() +
-                                                    point_crossmat * kf.P().block<3, 3>(kf::IESKF::R_ID, kf::IESKF::R_ID) * point_crossmat.transpose() +
-                                                    kf.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
-            
             // change to my new feat_map
             VoxelKey position = map_p2v_->calcVoxelKey(data_group.residual_info[i].point_world);
             auto iter = map_p2v_->my_featmap_.find(position);
-            if (iter != map_p2v_->my_featmap_.end())
-            {
-                //~ get p2v, weight. 
-                map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
-                std::shared_ptr<FeatVoxelGrid> vg = iter->second;
-                if(vg->temp_points_.size() >= vg->extract_feat_threshold_){
-                    valid_predict_cnt++;
-                }
-
+            if (iter != map_p2v_->my_featmap_.end()){
+                //~ get p2v, weight. If not enough points, no-prediction; enough points, predict. weight>threshold, data.is_valid=true.
+                bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
+                if(has_predicted)
+                    do_prediction_cnt++;
             }
         }
         double t0 = timer.toc();
-        cout << "[sharedUpdateFunc_p2v] Total residual number: " << lidar_points_size <<", residual calculation time: " << t0 << endl;
-        cout <<"[sharedUpdateFunc_p2v] Total 'valid' query points: " << valid_predict_cnt <<", average  prediction time: " << t0/valid_predict_cnt << endl; 
-        cout <<"Prediction cnt: " << g_debug_prediction_cnt << endl;
-        g_debug_prediction_cnt = 0;
-
 
         ///////////////////////////////////////////////// Check Build residual result /////////////////////////////////////////////////
         int valid_residual_cnt = 0;
-
         for(int i=0; i<data_group.residual_info.size(); ++i){
             const ResidualData& res = data_group.residual_info[i];
             if(res.is_valid){
                 valid_residual_cnt++;
             }
         }
-        cout  <<"Valid residual count: " << valid_residual_cnt << endl;
-
-
+        cout << "[sharedUpdateFunc_p2v] Total residual number: " << lidar_points_size <<", residual calculation time: " << t0 << endl;
+        cout << "[sharedUpdateFunc_p2v] Total prediction cnt : " << do_prediction_cnt << ", average prediction time: " << t0 / do_prediction_cnt << endl;
+        cout << "[sharedUpdateFunc_p2v] Valid residual number: " << valid_residual_cnt << endl;
         /////////////////////////////////////////////////
 
 

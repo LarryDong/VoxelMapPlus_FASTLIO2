@@ -18,3 +18,7 @@ merge_thresh_for_angle: 0.2
 merge_thresh_for_distance: 0.04
 
 
+
+model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt
+init_time: 2.0        # wait how many seconds to init the map.
+valid_weight_threshold: 0.799     # when predicting p2v, only p2v's weight > this threshold are choosen

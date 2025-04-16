@@ -47,7 +47,7 @@ typedef std::unordered_map<VoxelKey, std::shared_ptr<FeatVoxelGrid>, VoxelKey::H
 
 class FeatVoxelMap{
 public:
-    FeatVoxelMap(void);
+    FeatVoxelMap(std::string model, double valid_weight_threshold = 0.8);
     // void buildFeatVoxelMap(const std::shared_ptr<VoxelMap>& map);    // use VoxelMap to create my featMap. Issue: No points info.
 
     void buildFeatVoxelMap(const std::vector<V3D> &pts);
@@ -65,23 +65,15 @@ public:
 
     bool buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid);
 
-    // // TODO: @XEC add a function to predict p2v, and weight
-    // void predictP2V(const std::vector<V3D>& pts, const V3D& query_point, V3D& p2v, double& weight);
 
 
-    void publishFullFeatVoxelMap(void);     // publish the full voxel map.
-    
-    
 public:
     MyFeatMap my_featmap_;
     P2VModel p2v_model_;
-
-    ros::Publisher pub_full_voxelmap_;
     bool is_inited_;                    // if the whole feature map is inited?
+    double valid_weight_threshold_;     // default: 50
 
 private:
-
-
     std::string save_folder_;           // give a folder to save the output;
 
 public:

@@ -105,6 +105,23 @@ public:
         nh.param<std::vector<double>>("p_il", p_il, std::vector<double>{0, 0, 0});
         assert(p_il.size() == 3);
         lio_config.p_il << p_il[0], p_il[1], p_il[2];
+
+
+        // Load amy own parameters.
+        nh.param<std::string>("model_file", lio_config.model_file, "/default/model.pt");
+        nh.param<double>("init_time", lio_config.init_time, 2.0);
+        nh.param<double>("valid_weight_threshold", lio_config.valid_weight_threshold, 0.8);
+
+
+
+        ///////////////////////////////////////  Output config  ///////////////////////////////////////
+        ROS_WARN("-------------------- CONFIG --------------------");
+        ROS_INFO_STREAM("Model file: " << lio_config.model_file);
+        ROS_INFO_STREAM("Map init time: " << lio_config.init_time <<" s.");
+        ROS_INFO_STREAM("Valid weight threshold: " << lio_config.valid_weight_threshold);
+        ROS_WARN("-------------------- CONFIG --------------------");
+
+
     }
 
     void initSubScribers()

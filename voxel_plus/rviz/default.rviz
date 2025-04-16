@@ -4,9 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Status1
-        - /Grid1
         - /FeatVoxelMap_PC1
         - /Odometry1
         - /Odometry1/Shape1
@@ -113,7 +110,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 1
-      Size (m): 0.05000000074505806
+      Size (m): 0.029999999329447746
       Style: Squares
       Topic: /lio_node/world_cloud
       Unreliable: false
@@ -247,7 +244,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 10.936087608337402
+      Distance: 12.574831008911133
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -255,9 +252,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 2.0486016273498535
-        Y: 3.109574317932129
-        Z: 0.0002640574239194393
+        X: 0.7582017779350281
+        Y: 3.88331937789917
+        Z: 0.00026501109823584557
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -265,7 +262,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.5697963237762451
       Target Frame: map
-      Yaw: 1.6204055547714233
+      Yaw: 1.6754227876663208
     Saved: ~
 Window Geometry:
   Displays:
