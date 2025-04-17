@@ -405,6 +405,12 @@ namespace lio
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int lidar_points_size = lidar_cloud->size();
 
+        const int BATCH_SIZE = config.batch_size;
+
+        vector<Eigen::Vector3d> batch_queries;
+        vector<vector<Eigen::Vector3d>> batch_voxel_points;
+        vector<ResidualData*> batch_residuals;
+
         int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
         for(int i=0; i<lidar_points_size; ++i){
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
@@ -412,10 +418,60 @@ namespace lio
             VoxelKey position = map_p2v_->calcVoxelKey(data_group.residual_info[i].point_world);
             auto iter = map_p2v_->my_featmap_.find(position);
             if (iter != map_p2v_->my_featmap_.end()){
+
+                // TODO: One-time prediction
                 //~ get p2v, weight. If not enough points, no-prediction; enough points, predict. weight>threshold, data.is_valid=true.
-                bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
-                if(has_predicted)
-                    do_prediction_cnt++;
+                // bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
+                // if(has_predicted)
+                //     do_prediction_cnt++;
+
+
+                // TODO: Change to batch-predicting.
+                std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
+                ResidualData* res = &(data_group.residual_info[i]);
+                res->is_valid = false;                              // set to `true` if: enough points in voxel, and weight > threshold
+
+                if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)       // skip small voxels.
+                    continue;
+
+                // normalize the points.
+                std::vector<V3D> points;
+                points.reserve(voxel_grid->temp_points_.size());
+                V3D query_point;
+                const double voxel_size = 0.5;
+                V3D voxel_lower_bound = V3D(voxel_grid->position_.x, voxel_grid->position_.y, voxel_grid->position_.z) * voxel_size;
+                query_point = res->point_world - voxel_lower_bound;
+                for (auto p : voxel_grid->temp_points_){
+                    points.push_back(p - voxel_lower_bound);
+                }
+
+                batch_queries.push_back(query_point);
+                batch_voxel_points.push_back(points);
+                batch_residuals.push_back(res);
+
+                if(batch_queries.size() >= BATCH_SIZE){
+                    do_prediction_cnt += BATCH_SIZE;
+
+                    vector<V3D> batch_p2v_pred(BATCH_SIZE);
+                    vector<double> batch_weight(BATCH_SIZE);
+                    
+                    my_ros_utility::MyTimer timer;
+                    timer.tic();
+                    map_p2v_->p2v_model_.batchPredictP2V(batch_voxel_points, batch_queries, batch_p2v_pred, batch_weight, BATCH_SIZE);
+                    double t = timer.toc();
+
+                    // cout << "Predict a batch ( " << BATCH_SIZE <<" ), total time: " << t << "s." << endl;
+                    // assign `is_valid` based on the weight.
+                    for(int index_w=0; index_w < BATCH_SIZE; ++index_w){
+                        if( batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
+                            batch_residuals[index_w]->is_valid = true;
+                    }
+
+                    // clear the batch
+                    batch_queries.clear();
+                    batch_voxel_points.clear();
+                    batch_residuals.clear();
+                }
             }
         }
         double t0 = timer.toc();

@@ -21,6 +21,73 @@ void P2VModel::loadModel(std::string model_path){
 }
 
 
+// Predict the result using a batch of data.
+void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>>& batch_points, const vector<Eigen::Vector3d>& batch_query, 
+                                    vector<Eigen::Vector3d>& batch_p2v_pred, vector<double>& batch_weight, const int BATCH_SIZE)
+{
+    // [batch=1, N=50, Dim=3]
+    // const int BATCH = 8;
+    const int N = 50;
+    const int DIM = 3;
+
+    assert(batch_points.size() == BATCH_SIZE);
+    assert(batch_query.size() == BATCH_SIZE);
+
+
+    // 1. 准备批量数据
+    vector<float> flattened_points;
+    vector<float> flattened_queries;
+    flattened_points.reserve(BATCH_SIZE * N * DIM);
+    flattened_queries.reserve(BATCH_SIZE * DIM);
+    
+    // 填充批量数据
+    for(int b = 0; b < BATCH_SIZE; ++b) {
+        assert(batch_points[b].size()>=N);      // >= 50 points.
+        // 点云数据 (形状 [N,3])
+        for(int i = 0; i < N; ++i) {
+            const auto& p = batch_points[b][i];
+            flattened_points.push_back(p[0]);
+            flattened_points.push_back(p[1]);
+            flattened_points.push_back(p[2]);
+        }
+
+        // 查询点数据 (形状 [3])
+        const auto& q = batch_query[b];
+        flattened_queries.push_back(q[0]);
+        flattened_queries.push_back(q[1]);
+        flattened_queries.push_back(q[2]);
+    }
+
+    // 2. 创建批量张量
+    torch::Tensor points_tensor = torch::from_blob(flattened_points.data(), {BATCH_SIZE, N, DIM}, torch::kFloat32).clone(); // clone()确保内存独立
+    torch::Tensor queries_tensor = torch::from_blob(flattened_queries.data(), {BATCH_SIZE, DIM}, torch::kFloat32).clone();
+
+    // cout <<"Point tensor shape: " << points_tensor.sizes() << endl;
+    // cout <<"Query tensor shape: " << queries_tensor.sizes() << endl;
+
+    // 3. Predict
+    std::vector<torch::jit::IValue> inputs;
+    inputs.push_back(points_tensor);
+    inputs.push_back(queries_tensor);
+
+    auto output = model_.forward(inputs);           // Prediction.
+    assert(output.isTuple());
+    const auto& elements = output.toTuple()->elements();
+
+    auto pred_p2v = elements[0].toTensor().to(torch::kCPU).data_ptr<float>();
+    auto pred_weight = elements[1].toTensor().to(torch::kCPU).data_ptr<float>();
+
+    for(int b = 0; b < BATCH_SIZE; ++b) {
+        batch_p2v_pred[b] << pred_p2v[b*3 + 0], pred_p2v[b*3 + 1], pred_p2v[b*3 + 2];
+        batch_weight[b] = pred_weight[b];
+    }
+}
+
+
+
+
+
+
 void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Vector3d& query, Eigen::Vector3d& p2v_pred, double& weight){
     
     my_ros_utility::MyTimer timer;
@@ -122,5 +189,6 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
 
     // std::abort();
 }
+
 
 

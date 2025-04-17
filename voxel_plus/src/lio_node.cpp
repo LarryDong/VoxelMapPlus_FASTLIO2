@@ -111,6 +111,9 @@ public:
         nh.param<std::string>("model_file", lio_config.model_file, "/default/model.pt");
         nh.param<double>("init_time", lio_config.init_time, 2.0);
         nh.param<double>("valid_weight_threshold", lio_config.valid_weight_threshold, 0.8);
+        nh.param<int>("batch_size", lio_config.batch_size, 4);
+
+        
 
 
 
@@ -119,6 +122,7 @@ public:
         ROS_INFO_STREAM("Model file: " << lio_config.model_file);
         ROS_INFO_STREAM("Map init time: " << lio_config.init_time <<" s.");
         ROS_INFO_STREAM("Valid weight threshold: " << lio_config.valid_weight_threshold);
+        ROS_INFO_STREAM("Prediction batch size : " << lio_config.batch_size);
         ROS_WARN("-------------------- CONFIG --------------------");
 
 

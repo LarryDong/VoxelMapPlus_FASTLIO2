@@ -48,6 +48,7 @@ namespace lio
         string model_file = "model_file.pt";        // p2v model file, xxx.pt
         double init_time = 2.0f;                    // wait for some seconds to switch to p2v prediction.
         double valid_weight_threshold = 0.8f;       // threshold > this value's weight can contribute to the residual
+        int batch_size = 8;                         // batch size for prediction.
     };
 
 
