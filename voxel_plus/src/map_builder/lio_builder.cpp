@@ -3,6 +3,8 @@
 
 #include "feat_voxel_map.h"
 
+#include <omp.h>
+
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
 extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
@@ -412,6 +414,8 @@ namespace lio
         vector<ResidualData*> batch_residuals;
 
         int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
+        int skip_cnt = 0;
+        #pragma omp parallel for                            // parallel computation.
         for(int i=0; i<lidar_points_size; ++i){
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             // change to my new feat_map
@@ -434,19 +438,21 @@ namespace lio
                 if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)       // skip small voxels.
                     continue;
 
-                // normalize the points.
-                std::vector<V3D> points;
-                points.reserve(voxel_grid->temp_points_.size());
+                if(skip_cnt++ % config.prediction_skip != 0)            // skip some points to speed-up
+                    continue;   
+
                 V3D query_point;
-                const double voxel_size = 0.5;
-                V3D voxel_lower_bound = V3D(voxel_grid->position_.x, voxel_grid->position_.y, voxel_grid->position_.z) * voxel_size;
-                query_point = res->point_world - voxel_lower_bound;
-                for (auto p : voxel_grid->temp_points_){
-                    points.push_back(p - voxel_lower_bound);
-                }
+                query_point = res->point_world - voxel_grid->lower_boundary_;
+
+                // normalize the points.        TODO: normalize only once. Not verified
+                // std::vector<V3D> points;
+                // points.reserve(voxel_grid->temp_points_.size());
+                // for (auto p : voxel_grid->temp_points_){
+                //     points.push_back(p - voxel_grid->lower_boundary_);
+                // }
 
                 batch_queries.push_back(query_point);
-                batch_voxel_points.push_back(points);
+                batch_voxel_points.push_back(voxel_grid->normalized_points_);
                 batch_residuals.push_back(res);
 
                 if(batch_queries.size() >= BATCH_SIZE){

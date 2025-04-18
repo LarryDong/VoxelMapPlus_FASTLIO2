@@ -112,6 +112,7 @@ public:
         nh.param<double>("init_time", lio_config.init_time, 2.0);
         nh.param<double>("valid_weight_threshold", lio_config.valid_weight_threshold, 0.8);
         nh.param<int>("batch_size", lio_config.batch_size, 4);
+        nh.param<int>("prediction_skip", lio_config.prediction_skip, 1);
 
         
 
@@ -123,6 +124,7 @@ public:
         ROS_INFO_STREAM("Map init time: " << lio_config.init_time <<" s.");
         ROS_INFO_STREAM("Valid weight threshold: " << lio_config.valid_weight_threshold);
         ROS_INFO_STREAM("Prediction batch size : " << lio_config.batch_size);
+        ROS_INFO_STREAM("Prediction skip       : " << lio_config.prediction_skip);
         ROS_WARN("-------------------- CONFIG --------------------");
 
 

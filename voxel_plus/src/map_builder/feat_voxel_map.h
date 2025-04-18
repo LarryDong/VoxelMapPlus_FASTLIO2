@@ -32,9 +32,12 @@ public:
 
 public: 
     static uint64_t count_;
+    double voxel_size_;
     uint64_t group_id_;
     std::vector<V3D> temp_points_;      // points used for voxel feature extraction
+    std::vector<V3D> normalized_points_; // normalized points, based on the lower_boundary.
     VoxelKey position_;
+    V3D lower_boundary_;                 // lower boundary of voxel, based on the "position"
     bool is_feat_extracted_;            // if feature extracted, set to true
     int extract_feat_threshold_;        // how many points are neede to extract voxel feat. Default: 25?
     std::vector<double> voxel_feature_; // PointNet's output

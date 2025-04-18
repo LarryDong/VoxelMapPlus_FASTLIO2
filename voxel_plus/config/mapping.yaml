@@ -23,3 +23,4 @@ model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best
 init_time: 2.0        # wait how many seconds to init the map.
 valid_weight_threshold: 0.799     # when predicting p2v, only p2v's weight > this threshold are choosen
 batch_size: 1
+prediction_skip: 2                # how many point do one prediction? 1: every point; 2: half point.

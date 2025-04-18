@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /scan_reg1
         - /FeatVoxelMap_PC1
         - /Odometry1
         - /Odometry1/Shape1
@@ -98,7 +99,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 138; 226; 52
+      Color: 255; 255; 255
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
@@ -244,7 +245,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 12.574831008911133
+      Distance: 9.571761131286621
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -252,17 +253,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.7582017779350281
-        Y: 3.88331937789917
-        Z: 0.00026501109823584557
+        X: 1.3964707851409912
+        Y: 2.8313770294189453
+        Z: 0.00026310374960303307
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.054796814918518
       Target Frame: map
-      Yaw: 1.6754227876663208
+      Yaw: 1.5454232692718506
     Saved: ~
 Window Geometry:
   Displays:

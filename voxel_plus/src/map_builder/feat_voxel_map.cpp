@@ -17,11 +17,16 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
 {
 
     group_id_ = FeatVoxelGrid::count_++;
+    voxel_size_ = 0.5;
     is_feat_extracted_ = false;
     extract_feat_threshold_ = 50;               // default: 25 poins to extract feat.
+
+    lower_boundary_ = V3D(position_.x, position_.y, position_.z) * voxel_size_;
     
-    vector<V3D>().swap(temp_points_);
+    // vector<V3D>().swap(temp_points_);
+    // vector<V3D>().swap(normalized_points_);
     temp_points_.reserve(4*extract_feat_threshold_);
+    normalized_points_.reserve(4*extract_feat_threshold_);
 
 #ifdef DEBUG_INFO
     ROS_DEBUG_STREAM("FeatVoxelGrid is inited. ID: " << group_id_);
@@ -30,6 +35,7 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
 
 void FeatVoxelGrid::addPoint(const V3D& p){
     temp_points_.push_back(p);
+    normalized_points_.push_back(p - lower_boundary_);
 }
 
 void FeatVoxelGrid::printInfo(void){
@@ -146,11 +152,11 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     std::vector<V3D> points;
     points.reserve(voxel_grid->extract_feat_threshold_);
     V3D query_point;
-    const double voxel_size = 0.5;
-    V3D voxel_lower_bound = V3D(voxel_grid->position_.x, voxel_grid->position_.y, voxel_grid->position_.z) * voxel_size;
-    query_point = data.point_world - voxel_lower_bound;
+    // const double voxel_size = 0.5;
+    // V3D voxel_lower_bound = V3D(position_.x, position_.y, position_.z) * voxel_size;
+    query_point = data.point_world - voxel_grid->lower_boundary_;
     for (auto p : voxel_grid->temp_points_){
-        points.push_back(p - voxel_lower_bound);
+        points.push_back(p - voxel_grid->lower_boundary_);
     }
 
     p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
