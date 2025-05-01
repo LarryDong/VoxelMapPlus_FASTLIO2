@@ -63,11 +63,11 @@ public:
         initPublishers();
         map_builder.loadConfig(lio_config);
         
-#ifndef OFFLINE_ROSBAG
-        initSubScribers();
-#else
-        initRosbagPlayer();
-#endif
+        // use offline rosbag play based on configure.
+        if(lio_config.use_offline_rosbag)
+            initRosbagPlayer();
+        else
+            initSubScribers();
 
         main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
         voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
@@ -99,6 +99,10 @@ public:
 
         nh.param<int>("max_point_thresh", lio_config.max_point_thresh, 100);
         nh.param<int>("update_size_thresh", lio_config.update_size_thresh, 10);
+
+        nh.param<bool>("use_offline_rosbag", lio_config.use_offline_rosbag, false);
+        nh.param<string>("offline_rosbag_file", lio_config.offline_rosbag_file, "default.bag");
+
 
         nh.param<int>("map_capacity", lio_config.map_capacity, 100000);
         nh.param<bool>("gravity_align", lio_config.gravity_align, true);
@@ -136,6 +140,9 @@ public:
         ROS_INFO_STREAM("Valid weight threshold: " << lio_config.valid_weight_threshold);
         ROS_INFO_STREAM("Prediction batch size : " << lio_config.batch_size);
         ROS_INFO_STREAM("Prediction skip       : " << lio_config.prediction_skip);
+        
+        if(lio_config.use_offline_rosbag)
+            ROS_INFO_STREAM("Use offline rosbag! Bagfile: " << lio_config.offline_rosbag_file);
         ROS_WARN("-------------------- CONFIG --------------------");
 
 
@@ -159,7 +166,7 @@ public:
             ros::Time::init();  // 重要！确保ros时间系统初始化
             
             for(const rosbag::MessageInstance& m : view) {
-                
+
                 if(!ros::ok())      // stop when ctrl+C
                     break;
 

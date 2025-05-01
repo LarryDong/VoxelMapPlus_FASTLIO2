@@ -18,6 +18,9 @@ merge_thresh_for_angle: 0.2
 merge_thresh_for_distance: 0.04
 
 
+use_offline_rosbag: true          # use offline rosbag
+offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
+
 
 model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt
 init_time: 2.0        # wait how many seconds to init the map.

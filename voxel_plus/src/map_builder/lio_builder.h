@@ -50,6 +50,9 @@ namespace lio
         double valid_weight_threshold = 0.8f;       // threshold > this value's weight can contribute to the residual
         int batch_size = 8;                         // batch size for prediction.
         int prediction_skip = 1;                    // how many frames to skip for prediction.
+
+        bool use_offline_rosbag = false;
+        string offline_rosbag_file = "empty.bag";
     };
 
 
