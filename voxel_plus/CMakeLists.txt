@@ -18,11 +18,8 @@ add_definitions(-DMP_PROC_NUM=1)
 
 include_directories(../../my_ros_debugger)
 # add point2voxel c++
-include_directories(/home/larry/codeGit/libtorch/include)   # libtorch on NUC
+include_directories(/home/larry/codeGit/libtorch/include)   # libtorch 
 set(Torch_DIR "/home/larry/codeGit/libtorch/share/cmake/Torch")
-
-include_directories(/home/larry/libtorch-bin/include)   # libtorch on GTX1660 PC
-set(Torch_DIR "/home/larry/libtorch-bin/share/cmake/Torch")
 
 find_package(Torch REQUIRED)
 

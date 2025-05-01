@@ -5,6 +5,7 @@
 2. `std_matcher` 需要GTSAM，安装GTSAM时版本遇到些问题。因为用不到回环，所以CATKIN_IGNORE掉了这个launch
 3. livox_ros_driver2，安装后会出现cmake配置文件找不到问题，所以索性直接装到对应的workspace下面；但是执行脚本文件时，不知道为啥会自动编译整个workspace，所以保证其他没有问题。
 4. VoxelMapPlus_FASTLIO2代码CMakeLists给的c++是14，和我安装的sophus版本需要c++17，所以进行了修改。否则会报错：error: ‘std::optional’ has not been declared
+5. Compile this code without having anaconda environment!!!
 
 
 # FastLIO2 With VoxelMapPlus And STD

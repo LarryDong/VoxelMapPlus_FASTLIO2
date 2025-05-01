@@ -11,6 +11,11 @@
 
 #include <geometry_msgs/PoseStamped.h>
 
+// for offline rosbag play.
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#define OFFLINE_ROSBAG      // cmusing offline rosbag loader.
+
 
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_fullvoxelmap_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
@@ -55,9 +60,15 @@ public:
     LIONode() : nh("~")
     {
         loadConfig();
-        initSubScribers();
         initPublishers();
         map_builder.loadConfig(lio_config);
+        
+#ifndef OFFLINE_ROSBAG
+        initSubScribers();
+#else
+        initRosbagPlayer();
+#endif
+
         main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
         voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
         // 这行代码会启动之前创建的定时器 voxel_map_loop。启动后，定时器开始按照设定的 5 秒间隔调用回调函数 LIONode::voxelTimerCB
@@ -134,6 +145,43 @@ public:
     {
         lidar_sub = nh.subscribe(config.lidar_topic, 10000, &LIONode::lidarCB, this);
         imu_sub = nh.subscribe(config.imu_topic, 10000, &LIONode::imuCB, this);
+    }
+
+    // Load a rosbag and play.
+    void initRosbagPlayer(){
+        const string rosbag_path = "/home/larry/featVoxelMap_ws/data/jyl-office.bag";
+        ROS_WARN_STREAM("Load rosbag from: " << rosbag_path);
+        try {
+            rosbag::Bag bag(rosbag_path, rosbag::bagmode::Read);
+            std::vector<std::string> topics = {config.lidar_topic, config.imu_topic};
+            rosbag::View view(bag, rosbag::TopicQuery(topics));
+            
+            ros::Time::init();  // 重要！确保ros时间系统初始化
+            
+            for(const rosbag::MessageInstance& m : view) {
+                
+                if(!ros::ok())      // stop when ctrl+C
+                    break;
+
+                if(m.getTopic() == config.lidar_topic) {
+                    auto msg = m.instantiate<livox_ros_driver2::CustomMsg>();
+                    if(msg) lidarCB(msg);
+                }
+                else if(m.getTopic() == config.imu_topic) {
+                    auto msg = m.instantiate<sensor_msgs::Imu>();
+                    if(msg) imuCB(msg);
+                }
+                
+                // 处理同步和主循环
+                ros::spinOnce();
+                if(syncPackage()) {
+                    processData();  // 将mainCB中的处理逻辑提取出来
+                }
+            }
+            bag.close();
+        } catch(rosbag::BagException& e) {
+            ROS_ERROR("Failed to load rosbag: %s", e.what());
+        }    
     }
 
     void initPublishers()
@@ -213,6 +261,10 @@ public:
     {
         if (!syncPackage())
             return;
+        processData();
+    }
+
+    void processData(){
         
         // MAIN FUNCTION
         map_builder.process(sync_pack);
