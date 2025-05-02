@@ -330,6 +330,7 @@ namespace lio
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int size = lidar_cloud->size();
 
+// #define MP_EN
 #ifdef MP_EN
         omp_set_num_threads(MP_PROC_NUM);
 #pragma omp parallel for
@@ -423,12 +424,14 @@ namespace lio
             auto iter = map_p2v_->my_featmap_.find(position);
             if (iter != map_p2v_->my_featmap_.end()){
 
+#define USING_BATCH
+#ifndef USING_BATCH
                 // TODO: One-time prediction
                 //~ get p2v, weight. If not enough points, no-prediction; enough points, predict. weight>threshold, data.is_valid=true.
-                // bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
-                // if(has_predicted)
-                //     do_prediction_cnt++;
-
+                bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
+                if(has_predicted)
+                    do_prediction_cnt++;
+#else
 
                 // TODO: Change to batch-predicting.
                 std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
@@ -466,10 +469,11 @@ namespace lio
                     map_p2v_->p2v_model_.batchPredictP2V(batch_voxel_points, batch_queries, batch_p2v_pred, batch_weight, BATCH_SIZE);
                     double t = timer.toc();
 
+
                     // cout << "Predict a batch ( " << BATCH_SIZE <<" ), total time: " << t << "s." << endl;
                     // assign `is_valid` based on the weight.
                     for(int index_w=0; index_w < BATCH_SIZE; ++index_w){
-                        if( batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
+                        if(batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
                             batch_residuals[index_w]->is_valid = true;
                     }
 
@@ -478,6 +482,9 @@ namespace lio
                     batch_voxel_points.clear();
                     batch_residuals.clear();
                 }
+
+#endif
+
             }
         }
         double t0 = timer.toc();

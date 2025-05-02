@@ -147,7 +147,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
     if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)  // not enough points, return. (default:50)
         return false;
-
+    
     // normalize data to [0, 0.5] voxel.
     std::vector<V3D> points;
     points.reserve(voxel_grid->extract_feat_threshold_);
@@ -155,6 +155,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     // const double voxel_size = 0.5;
     // V3D voxel_lower_bound = V3D(position_.x, position_.y, position_.z) * voxel_size;
     query_point = data.point_world - voxel_grid->lower_boundary_;
+
     for (auto p : voxel_grid->temp_points_){
         points.push_back(p - voxel_grid->lower_boundary_);
     }

@@ -21,6 +21,7 @@ using std::cout, std::endl;
 class P2VModel {
 
 public:
+    // P2VModel() : device_(torch::kCPU)      // device_ should be inited not assigned.
     P2VModel() : device_(torch::cuda::is_available() ? torch::kCUDA : torch::kCPU)      // device_ should be inited not assigned.
     {
         if (device_.is_cuda()){

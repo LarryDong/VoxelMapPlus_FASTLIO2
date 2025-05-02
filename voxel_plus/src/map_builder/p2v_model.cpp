@@ -20,10 +20,9 @@ void P2VModel::loadModel(std::string model_path){
     }
 }
 
-
 // Predict the result using a batch of data.
-void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>>& batch_points, const vector<Eigen::Vector3d>& batch_query, 
-                                    vector<Eigen::Vector3d>& batch_p2v_pred, vector<double>& batch_weight, const int BATCH_SIZE)
+void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_points, const vector<Eigen::Vector3d> &batch_query,
+                               vector<Eigen::Vector3d> &batch_p2v_pred, vector<double> &batch_weight, const int BATCH_SIZE)
 {
     // [batch=1, N=50, Dim=3]
     // const int BATCH = 8;
@@ -33,34 +32,35 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>>& batch_poin
     assert(batch_points.size() == BATCH_SIZE);
     assert(batch_query.size() == BATCH_SIZE);
 
-
     // 1. 准备批量数据
     vector<float> flattened_points;
     vector<float> flattened_queries;
     flattened_points.reserve(BATCH_SIZE * N * DIM);
     flattened_queries.reserve(BATCH_SIZE * DIM);
-    
+
     // 填充批量数据
-    for(int b = 0; b < BATCH_SIZE; ++b) {
-        assert(batch_points[b].size()>=N);      // >= 50 points.
+    for (int b = 0; b < BATCH_SIZE; ++b)
+    {
+        assert(batch_points[b].size() >= N); // >= 50 points.
         // 点云数据 (形状 [N,3])
-        for(int i = 0; i < N; ++i) {
-            const auto& p = batch_points[b][i];
+        for (int i = 0; i < N; ++i)
+        {
+            const auto &p = batch_points[b][i];
             flattened_points.push_back(p[0]);
             flattened_points.push_back(p[1]);
             flattened_points.push_back(p[2]);
         }
 
         // 查询点数据 (形状 [3])
-        const auto& q = batch_query[b];
+        const auto &q = batch_query[b];
         flattened_queries.push_back(q[0]);
         flattened_queries.push_back(q[1]);
         flattened_queries.push_back(q[2]);
     }
 
     // 2. 创建批量张量
-    torch::Tensor points_tensor = torch::from_blob(flattened_points.data(), {BATCH_SIZE, N, DIM}, torch::kFloat32).clone().to(device_); // clone()确保内存独立
-    torch::Tensor queries_tensor = torch::from_blob(flattened_queries.data(), {BATCH_SIZE, DIM}, torch::kFloat32).clone().to(device_);
+    torch::Tensor points_tensor = torch::from_blob(flattened_points.data(), {BATCH_SIZE, N, DIM}, torch::kFloat32).clone().to(device_).contiguous(); // clone()确保内存独立
+    torch::Tensor queries_tensor = torch::from_blob(flattened_queries.data(), {BATCH_SIZE, DIM}, torch::kFloat32).clone().to(device_).contiguous();
 
     // cout <<"Point tensor shape: " << points_tensor.sizes() << endl;
     // cout <<"Query tensor shape: " << queries_tensor.sizes() << endl;
@@ -70,20 +70,27 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>>& batch_poin
     inputs.push_back(points_tensor);
     inputs.push_back(queries_tensor);
 
-    auto output = model_.forward(inputs);           // Prediction.
+    auto output = model_.forward(inputs); // Prediction.
     assert(output.isTuple());
-    const auto& elements = output.toTuple()->elements();
+    const auto &elements = output.toTuple()->elements();
 
-    auto pred_p2v = elements[0].toTensor().to(torch::kCPU).data_ptr<float>();       // back to CPU
-    auto pred_weight = elements[1].toTensor().to(torch::kCPU).data_ptr<float>();
 
-    for(int b = 0; b < BATCH_SIZE; ++b) {
-        batch_p2v_pred[b] << pred_p2v[b*3 + 0], pred_p2v[b*3 + 1], pred_p2v[b*3 + 2];
+    // 4. Back to CPU. synchronize is necessary. 
+    auto pred_p2v_tensor = elements[0].toTensor().to(torch::kCPU);
+    auto pred_weight_tensor = elements[1].toTensor().to(torch::kCPU);
+    if (device_.is_cuda()) {
+        torch::cuda::synchronize();  // 确保数据已复制到CPU内存
+    }
+    float* pred_p2v = pred_p2v_tensor.data_ptr<float>();
+    float* pred_weight = pred_weight_tensor.data_ptr<float>();
+
+
+    for (int b = 0; b < BATCH_SIZE; ++b)
+    {
+        batch_p2v_pred[b] << pred_p2v[b * 3 + 0], pred_p2v[b * 3 + 1], pred_p2v[b * 3 + 2];
         batch_weight[b] = pred_weight[b];
     }
 }
-
-
 
 
 
@@ -102,6 +109,7 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
         cout <<"Not enough points. Skip." << endl;
         return ;
     }
+
 
     // 1. points convert to tensor.
     std::vector<float> flattened_points;
@@ -140,17 +148,20 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
     const auto& elements = output.toTuple()->elements();
 
     // Output 1: P2V
-    torch::Tensor tensor1 = elements[0].toTensor().contiguous().to(device_);
+    //TODO: Back to CPU!!!!
+    torch::Device cpu_dev = torch::kCPU;
+
+    torch::Tensor tensor1 = elements[0].toTensor().to(cpu_dev);
     auto tensor_data1 = tensor1.data_ptr<float>();
     p2v_pred << double(tensor_data1[0]), double(tensor_data1[1]), double(tensor_data1[2]);
 
     // Output 2: weight.
-    torch::Tensor tensor2 = elements[1].toTensor().to(device_);
+    torch::Tensor tensor2 = elements[1].toTensor().to(cpu_dev);
     weight = tensor2.item<float>();
 
     double t3 = timer.toc();        // post processing time
 
-
+// #define DEBUG_INFO
 #ifdef DEBUG_INFO
     cout <<"query point: " << endl;
     cout << p_tensor << endl;
