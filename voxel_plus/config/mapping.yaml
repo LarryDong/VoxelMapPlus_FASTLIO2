@@ -20,6 +20,7 @@ merge_thresh_for_distance: 0.04
 
 use_offline_rosbag: true          # use offline rosbag
 offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
+trajectory_save_filename: /home/larry/Desktop/trajectory.txt
 
 
 model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt

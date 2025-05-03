@@ -16,10 +16,12 @@
 #include <rosbag/view.h>
 #define OFFLINE_ROSBAG      // cmusing offline rosbag loader.
 
+#include <iostream>
 
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_fullvoxelmap_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::VoxelGrid<pcl::PointXYZINormal> g_ds_filter;
+
 
 inline void addScanToWorldMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& point_world, float leaf_size = 0.05f){
     *g_global_pc += *point_world;
@@ -64,17 +66,26 @@ public:
         map_builder.loadConfig(lio_config);
         
         // use offline rosbag play based on configure.
-        if(lio_config.use_offline_rosbag)
-            initRosbagPlayer();
-        else
+        if(lio_config.use_offline_rosbag){
+            traj_out_file_.open(trajectory_save_filename_, ios::out);
+            if (traj_out_file_.is_open()){
+                cout << "Trajectory will save into: " << trajectory_save_filename_ << endl;
+            }
+            else
+                ROS_ERROR_STREAM("Error. Cannot open file to save trajectory: " << trajectory_save_filename_);
+            
+            initRosbagPlayerAndRun();
+        }
+        else{
             initSubScribers();
+            main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
+            voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
+        }
 
-        main_loop = nh.createTimer(ros::Duration(0.02), &LIONode::mainCB, this);
-        voxel_map_loop = nh.createTimer(ros::Duration(5.0), &LIONode::voxelTimerCB, this, false, false);        // CB: CallBack
         // 这行代码会启动之前创建的定时器 voxel_map_loop。启动后，定时器开始按照设定的 5 秒间隔调用回调函数 LIONode::voxelTimerCB
         // This loop shows the marker at a low frequency.
-        if (config.publish_voxel_map)
-            voxel_map_loop.start();
+        // if (config.publish_voxel_map)
+        //     voxel_map_loop.start();
     }
 
     void loadConfig()
@@ -103,6 +114,9 @@ public:
         nh.param<bool>("use_offline_rosbag", lio_config.use_offline_rosbag, false);
         nh.param<string>("offline_rosbag_file", lio_config.offline_rosbag_file, "default.bag");
 
+        nh.param<string>("trajectory_save_filename", trajectory_save_filename_, "/default/trajectory.txt");
+
+
 
         nh.param<int>("map_capacity", lio_config.map_capacity, 100000);
         nh.param<bool>("gravity_align", lio_config.gravity_align, true);
@@ -129,6 +143,7 @@ public:
         nh.param<int>("batch_size", lio_config.batch_size, 4);
         nh.param<int>("prediction_skip", lio_config.prediction_skip, 1);
 
+
         
 
 
@@ -140,6 +155,7 @@ public:
         ROS_INFO_STREAM("Valid weight threshold: " << lio_config.valid_weight_threshold);
         ROS_INFO_STREAM("Prediction batch size : " << lio_config.batch_size);
         ROS_INFO_STREAM("Prediction skip       : " << lio_config.prediction_skip);
+        ROS_INFO_STREAM("Trajectory save into  : " << trajectory_save_filename_);
         
         if(lio_config.use_offline_rosbag)
             ROS_INFO_STREAM("Use offline rosbag! Bagfile: " << lio_config.offline_rosbag_file);
@@ -155,7 +171,8 @@ public:
     }
 
     // Load a rosbag and play.
-    void initRosbagPlayer(){
+    // ISSUE: This player automatically start the main loop.
+    void initRosbagPlayerAndRun(){
         const string rosbag_path = "/home/larry/featVoxelMap_ws/data/jyl-office.bag";
         ROS_WARN_STREAM("Load rosbag from: " << rosbag_path);
         try {
@@ -167,8 +184,11 @@ public:
             
             for(const rosbag::MessageInstance& m : view) {
 
-                if(!ros::ok())      // stop when ctrl+C
+                if(!ros::ok()){      // stop when ctrl+C
+                    traj_out_file_.close();
+                    cout << "Exist. Save trajectory into: " << trajectory_save_filename_ << endl;
                     break;
+                }
 
                 if(m.getTopic() == config.lidar_topic) {
                     auto msg = m.instantiate<livox_ros_driver2::CustomMsg>();
@@ -332,6 +352,31 @@ public:
         // this message type cannot be viewed by rviz.
         publishCloudWithOdom(body_cloud, config.map_frame, config.body_frame, sync_pack.cloud_end_time);
 
+        
+        //~ Save trajectory into files.
+        double current_ts = sync_pack.cloud_end_time;
+        Eigen::Vector3d pos = state.pos;
+        Eigen::Quaterniond quat(state.rot);
+        
+        // cout << "Save trajectory (TUM): " 
+        //     << std::fixed << std::setprecision(4) 
+        //     << current_ts << " "
+        //     << pos[0] << " "
+        //     << pos[1] << " "
+        //     << pos[2] << " "
+        //     << quat.x() << " "
+        //     << quat.y() << " "
+        //     << quat.z() << " "
+        //     << quat.w() << endl;
+
+        traj_out_file_ << std::fixed << std::setprecision(4) << current_ts << " "
+                    << pos[0] << " "
+                    << pos[1] << " "
+                    << pos[2] << " "
+                    << quat.x() << " "
+                    << quat.y() << " "
+                    << quat.z() << " "
+                    << quat.w() << endl;
     }
 
 
@@ -439,6 +484,11 @@ public:
     kf::State state;
 
     ros::Publisher pub_featvoxelmap_;
+
+    //~ trajectory saver
+    std::string trajectory_save_filename_;
+    std::ofstream traj_out_file_;
+
 };
 
 int main(int argc, char **argv)
