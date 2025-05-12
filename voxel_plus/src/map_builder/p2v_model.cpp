@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <random>
 
 
 void P2VModel::loadModel(std::string model_path){
@@ -120,13 +121,19 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
     // 1. points convert to tensor.
     std::vector<float> flattened_points;
     flattened_points.reserve(BATCH * N * DIM);
-    // only reserve 50 points.          // TODO: use random selection.
+    // randomly select 50 points.
+    std::vector<int> indices(points.size());
+    std::random_device rd;
+    std::default_random_engine rng(rd());
+    std::shuffle(indices.begin(), indices.end(), rng);
     for(int i=0; i<N; ++i){
-        const auto& p = points[i];
+        const auto& p = points[indices[i]];
         flattened_points.push_back(p[0]);
         flattened_points.push_back(p[1]);
         flattened_points.push_back(p[2]);
     }
+
+
     // create the tensor, as [batch=1, N=50, dim=3];
     torch::Tensor points_tensor = torch::tensor(flattened_points, torch::dtype(torch::kFloat32)).reshape({BATCH, N, DIM}).clone().to(device_);
 

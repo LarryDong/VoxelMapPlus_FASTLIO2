@@ -413,6 +413,7 @@ namespace lio
         vector<Eigen::Vector3d> batch_queries;
         vector<vector<Eigen::Vector3d>> batch_voxel_points;
         vector<ResidualData*> batch_residuals;
+        vector<std::unordered_map<VoxelKey, std::shared_ptr<FeatVoxelGrid>, VoxelKey::Hasher>::iterator> batch_iters;       // save iter, for color assign. (so urgly)
 
         int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
         int skip_cnt = 0;
@@ -431,6 +432,9 @@ namespace lio
                 bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
                 if(has_predicted)
                     do_prediction_cnt++;
+                // weight is assgined back to voxels. Only for NO-BATCH prediction, because BATCH prediction is complex to assign weight back.
+                const double weight_lower_bound = map_p2v_->valid_weight_threshold_;
+                iter->second->voxel_weight_ = (data_group.residual_info[i].weight - weight_lower_bound)/(1-weight_lower_bound); // normalize the voxel_weight
 #else
 
                 // Change to batch-predicting.
@@ -457,35 +461,37 @@ namespace lio
                 batch_queries.push_back(query_point);
                 batch_voxel_points.push_back(voxel_grid->normalized_points_);
                 batch_residuals.push_back(res);
+                batch_iters.push_back(iter);
+#endif
+            }
+            
+            // calculate the weight/residual if we got a BATCH size of voxel.
+            if(batch_queries.size() >= BATCH_SIZE){
+                do_prediction_cnt += BATCH_SIZE;
 
-                if(batch_queries.size() >= BATCH_SIZE){
-                    do_prediction_cnt += BATCH_SIZE;
+                vector<V3D> batch_p2v_pred(BATCH_SIZE);
+                vector<double> batch_weight(BATCH_SIZE);
+                
+                my_ros_utility::MyTimer timer;
+                timer.tic();
+                map_p2v_->p2v_model_.batchPredictP2V(batch_voxel_points, batch_queries, batch_p2v_pred, batch_weight, BATCH_SIZE);
+                double t = timer.toc();
 
-                    vector<V3D> batch_p2v_pred(BATCH_SIZE);
-                    vector<double> batch_weight(BATCH_SIZE);
-                    
-                    my_ros_utility::MyTimer timer;
-                    timer.tic();
-                    map_p2v_->p2v_model_.batchPredictP2V(batch_voxel_points, batch_queries, batch_p2v_pred, batch_weight, BATCH_SIZE);
-                    double t = timer.toc();
-
-
-                    // cout << "Predict a batch ( " << BATCH_SIZE <<" ), total time: " << t << "s." << endl;
-                    // assign `is_valid` based on the weight.
-                    for(int index_w=0; index_w < BATCH_SIZE; ++index_w){
-                        if(batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
-                            batch_residuals[index_w]->is_valid = true;
-                    }
-
-                    // clear the batch
-                    batch_queries.clear();
-                    batch_voxel_points.clear();
-                    batch_residuals.clear();
+                // cout << "Predict a batch ( " << BATCH_SIZE <<" ), total time: " << t << "s." << endl;
+                // assign `is_valid` based on the weight.
+                for(int index_w=0; index_w < BATCH_SIZE; ++index_w){
+                    if(batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
+                        batch_residuals[index_w]->is_valid = true;
+                    batch_iters[index_w]->second->voxel_weight_ = batch_weight[index_w];        // assign weight color back to voxels.
                 }
 
-#endif
-
+                // clear the batch
+                batch_queries.clear();
+                batch_voxel_points.clear();
+                batch_residuals.clear();
+                batch_iters.clear();
             }
+
         }
         double t0 = timer.toc();
 

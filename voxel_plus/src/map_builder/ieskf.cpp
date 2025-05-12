@@ -124,12 +124,14 @@ namespace kf
 
     void IESKF::update(bool use_p2v)
     {   
-        ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
         //~ x_是状态量，在函数中更新了x_以及对应的P_；
         const State predict_x = x_;         //~ predict_x is never changed.
         SharedState shared_data;
         shared_data.iter_num = 0;
         Vector23d delta = Vector23d::Zero();
+        Matrix23d L = Matrix23d::Identity();
+
+        ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
         for (size_t i = 0; i < max_iter_; i++)
         {
             func_(x_, shared_data);                 // func_ 动态绑定了： sharedUpdateFunc
@@ -150,7 +152,6 @@ namespace kf
             if (delta.maxCoeff() < eps_)
                 break;
         }
-        Matrix23d L = Matrix23d::Identity();
         L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
         L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
         L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
@@ -159,7 +160,7 @@ namespace kf
         // print result.
         State original_x = x_;
         // original_x.printInfo("------------- [Old] State Estimation. -------------");
-        ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
+        // ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
 
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////

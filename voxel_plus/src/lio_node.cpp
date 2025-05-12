@@ -10,6 +10,7 @@
 #include "interface/PointCloudWithOdom.h"
 
 #include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 
 // for offline rosbag play.
 #include <rosbag/bag.h>
@@ -180,6 +181,7 @@ public:
             rosbag::Bag bag(rosbag_path, rosbag::bagmode::Read);
             std::vector<std::string> topics = {config.lidar_topic, config.imu_topic};
             rosbag::View view(bag, rosbag::TopicQuery(topics));
+            const double rosbag_begin_time = view.getBeginTime().toSec();
             
             ros::Time::init();  // 重要！确保ros时间系统初始化
             
@@ -204,6 +206,9 @@ public:
                 ros::spinOnce();
                 if(syncPackage()) {
                     processData();  // 将mainCB中的处理逻辑提取出来
+                    double ros_current_time = sync_pack.cloud_start_time;
+                    double dt = ros_current_time - rosbag_begin_time;
+                    ROS_INFO_STREAM("--> Rosbag start time: " << dt << " s.");
                 }
             }
             bag.close();
@@ -215,6 +220,7 @@ public:
     void initPublishers()
     {
         odom_pub = nh.advertise<nav_msgs::Odometry>("slam_odom", 1000);
+        trajectory_pub = nh.advertise<nav_msgs::Path>("slam_trajectory", 1000);
         body_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("body_cloud", 1000);
         world_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("world_cloud", 1000);
         pub_full_map = nh.advertise<sensor_msgs::PointCloud2>("full_map", 1000);
@@ -313,24 +319,21 @@ public:
         publishCloud(pub_full_map, g_global_pc, config.map_frame, sync_pack.cloud_end_time);
 
 
-
         //////////////////////////////////////////////////////  publish full featvoxelmap  //////////////////////////////////////////////////////
         g_fullvoxelmap_pc->points.resize(0);
         auto feat_map = map_builder.map_p2v_->my_featmap_;
         for(const auto& pair : feat_map){
             int n_points = pair.second->temp_points_.size();
             double intensity = 0.0f;            // intensity: 0.25, 0.5, 0.75, 1
-            // if(n_points<25)
-            //     intensity = 0.25;
-            // else if(n_points >= 25 && n_points < 50)
-            //     intensity = 0.5;
-            // else if(n_points >=50 && n_points < 75)
-            //     intensity = 0.75;
-            // else
-            //     intensity = 1;
+
+            // intensity by number of points.
             intensity = float(n_points) / 100.0f;
             if (intensity>1)
                 intensity = 1;
+
+            // intensity by weight.
+            intensity = pair.second->voxel_weight_;
+
 
             for(const auto& v3d_point : pair.second->temp_points_){
                 pcl::PointXYZINormal point;
@@ -345,6 +348,10 @@ public:
 
         // publish the odometry
         publishOdom(config.map_frame, sync_pack.cloud_end_time);
+
+        // publish the trajectory
+        publishTrajectory(config.map_frame, sync_pack.cloud_end_time);
+
         
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
@@ -423,6 +430,35 @@ public:
     
     }
 
+    void publishTrajectory(const std::string& frame_id, const double& time) {
+        // 1. 创建位姿点
+        geometry_msgs::PoseStamped pose_stamped;
+        pose_stamped.header.stamp = ros::Time().fromSec(time);
+        pose_stamped.header.frame_id = frame_id;  // 使用全局坐标系
+        
+        // 2. 填充位置
+        pose_stamped.pose.position.x = state.pos.x();
+        pose_stamped.pose.position.y = state.pos.y();
+        pose_stamped.pose.position.z = state.pos.z();
+        
+        // 3. 填充姿态（直接复用 publishOdom 中的四元数）
+        Eigen::Quaterniond q(state.rot);
+        pose_stamped.pose.orientation.w = q.w();
+        pose_stamped.pose.orientation.x = q.x();
+        pose_stamped.pose.orientation.y = q.y();
+        pose_stamped.pose.orientation.z = q.z();
+        
+        // 4. 添加到路径
+        path_msg.poses.push_back(pose_stamped);
+        path_msg.header.stamp = ros::Time::now();  // 更新路径时间戳
+        path_msg.header.frame_id = frame_id;
+        
+        // 5. 发布轨迹
+        trajectory_pub.publish(path_msg);
+    }
+    
+
+
     void publishCloudWithOdom(pcl::PointCloud<pcl::PointXYZINormal>::Ptr _cloud, std::string &_frame_id, std::string &_child_frame, double _timestamp)
     {
         pcl::PointCloud<pcl::PointXYZI>::Ptr pub_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -470,6 +506,7 @@ public:
     ros::Subscriber imu_sub;
 
     ros::Publisher odom_pub;
+    ros::Publisher trajectory_pub;
     ros::Publisher body_cloud_pub;
     ros::Publisher world_cloud_pub;
 
@@ -487,6 +524,7 @@ public:
     ros::Publisher pub_featvoxelmap_;
 
     //~ trajectory saver
+    nav_msgs::Path path_msg;
     std::string trajectory_save_filename_;
     std::ofstream traj_out_file_;
 

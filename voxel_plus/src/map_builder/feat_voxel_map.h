@@ -41,6 +41,8 @@ public:
     bool is_feat_extracted_;            // if feature extracted, set to true
     int extract_feat_threshold_;        // how many points are neede to extract voxel feat. Default: 25?
     std::vector<double> voxel_feature_; // PointNet's output
+    
+    double voxel_weight_;               // weight of the whole voxel 
 };
 
 

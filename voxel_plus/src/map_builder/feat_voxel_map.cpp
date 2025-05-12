@@ -27,6 +27,7 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
     // vector<V3D>().swap(normalized_points_);
     temp_points_.reserve(4*extract_feat_threshold_);
     normalized_points_.reserve(4*extract_feat_threshold_);
+    voxel_weight_ = -1;
 
 #ifdef DEBUG_INFO
     ROS_DEBUG_STREAM("FeatVoxelGrid is inited. ID: " << group_id_);
@@ -161,7 +162,6 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     }
 
     p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
-
 
     if (data.weight > valid_weight_threshold_)       // only for correct prediction. default: 0.8
         data.is_valid = true;
