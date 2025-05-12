@@ -19,12 +19,19 @@ merge_thresh_for_distance: 0.04
 
 
 use_offline_rosbag: true          # use offline rosbag
-offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_00_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_01_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_07_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1006_01_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1008_03_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1018_00_img10hz600p.filter.bag
+offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1018_13_img10hz600p.filter.bag
+# offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
 trajectory_save_filename: /home/larry/Desktop/trajectory.txt
 
 
-model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map/checkpoint/best_voxel.pt
-init_time: 2.0        # wait how many seconds to init the map.
-valid_weight_threshold: 0.799     # when predicting p2v, only p2v's weight > this threshold are choosen
+model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/bg3.pt
+init_time: 5.0        # wait how many seconds to init the map.
+valid_weight_threshold: 0.6     # when predicting p2v, only p2v's weight > this threshold are choosen
 batch_size: 4
-prediction_skip: 1                # how many point do one prediction? 1: every point; 2: half point.
+prediction_skip: 10                # how many point do one prediction? 1: every point; 2: half point.

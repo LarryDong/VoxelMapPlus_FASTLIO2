@@ -74,10 +74,16 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_poin
     assert(output.isTuple());
     const auto &elements = output.toTuple()->elements();
 
-
+    // Old Model, (p2v, weight)
     // 4. Back to CPU. synchronize is necessary. 
-    auto pred_p2v_tensor = elements[0].toTensor().to(torch::kCPU);
-    auto pred_weight_tensor = elements[1].toTensor().to(torch::kCPU);
+    // auto pred_p2v_tensor = elements[0].toTensor().to(torch::kCPU);
+    // auto pred_weight_tensor = elements[1].toTensor().to(torch::kCPU);
+
+    // New model, (weight, p2v)
+    auto pred_weight_tensor = elements[0].toTensor().to(torch::kCPU);
+    auto pred_p2v_tensor = elements[1].toTensor().to(torch::kCPU);
+
+
     if (device_.is_cuda()) {
         torch::cuda::synchronize();  // 确保数据已复制到CPU内存
     }
@@ -140,6 +146,7 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
 
     timer.tic();
     auto output = model_.forward(inputs);           // Prediction.
+
     double t2 = timer.toc();        // prediction time
 
     timer.tic();
@@ -147,17 +154,33 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
     assert(output.isTuple());
     const auto& elements = output.toTuple()->elements();
 
-    // Output 1: P2V
-    //TODO: Back to CPU!!!!
-    torch::Device cpu_dev = torch::kCPU;
+    
 
+    // TODO: Old model output: (p2v, w)
+    // // Output 1: P2V
+    // torch::Device cpu_dev = torch::kCPU;
+    // torch::Tensor tensor1 = elements[0].toTensor().to(cpu_dev);
+    // auto tensor_data1 = tensor1.data_ptr<float>();
+    // p2v_pred << double(tensor_data1[0]), double(tensor_data1[1]), double(tensor_data1[2]);
+
+    // // Output 2: weight.
+    // torch::Tensor tensor2 = elements[1].toTensor().to(cpu_dev);
+    // auto tensor_data2 = tensor2.data_ptr<float>();
+    // weight = double(tensor_data2[0]);
+
+    // TODO: New model changed P2V and Weight sequence!!! (w, p2v)
+    // Output 1: w
+    torch::Device cpu_dev = torch::kCPU;
     torch::Tensor tensor1 = elements[0].toTensor().to(cpu_dev);
     auto tensor_data1 = tensor1.data_ptr<float>();
-    p2v_pred << double(tensor_data1[0]), double(tensor_data1[1]), double(tensor_data1[2]);
+    weight = double(tensor_data1[0]);
 
     // Output 2: weight.
     torch::Tensor tensor2 = elements[1].toTensor().to(cpu_dev);
-    weight = tensor2.item<float>();
+    auto tensor_data2 = tensor2.data_ptr<float>();
+    p2v_pred << double(tensor_data2[0]), double(tensor_data2[1]), double(tensor_data2[2]);
+
+
 
     double t3 = timer.toc();        // post processing time
 

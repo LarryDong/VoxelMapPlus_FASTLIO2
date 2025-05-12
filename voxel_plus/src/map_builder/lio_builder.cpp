@@ -433,7 +433,7 @@ namespace lio
                     do_prediction_cnt++;
 #else
 
-                // TODO: Change to batch-predicting.
+                // Change to batch-predicting.
                 std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
                 ResidualData* res = &(data_group.residual_info[i]);
                 res->is_valid = false;                              // set to `true` if: enough points in voxel, and weight > threshold
@@ -518,7 +518,12 @@ namespace lio
             J.setZero();
             
             double weight = data_group.residual_info[i].weight;     // weight: 0.8 ~ 1, if valid.
-            double r_info = (weight-0.8)*5; // normalized to (0,1)
+            // double r_info = (weight-0.8)*5; // normalized to (0,1)
+            double fen_mu = (1-map_p2v_->valid_weight_threshold_);
+            double fen_zi = weight - map_p2v_->valid_weight_threshold_;
+            assert(fen_zi > 0);
+            double r_info = fen_zi / fen_mu;    // normalized to (0,1)
+            
             r_info = r_info * 5000;         // scale-up. TODO: nor verified.
 
             J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();

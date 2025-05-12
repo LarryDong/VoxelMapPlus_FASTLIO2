@@ -173,7 +173,8 @@ public:
     // Load a rosbag and play.
     // ISSUE: This player automatically start the main loop.
     void initRosbagPlayerAndRun(){
-        const string rosbag_path = "/home/larry/featVoxelMap_ws/data/jyl-office.bag";
+        // const string rosbag_path = "/home/larry/featVoxelMap_ws/data/jyl-office.bag";
+        const string rosbag_path = lio_config.offline_rosbag_file;
         ROS_WARN_STREAM("Load rosbag from: " << rosbag_path);
         try {
             rosbag::Bag bag(rosbag_path, rosbag::bagmode::Read);

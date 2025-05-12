@@ -162,6 +162,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
 
     p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
 
+
     if (data.weight > valid_weight_threshold_)       // only for correct prediction. default: 0.8
         data.is_valid = true;
 
