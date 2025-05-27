@@ -137,7 +137,7 @@ public:
         lio_config.p_il << p_il[0], p_il[1], p_il[2];
 
 
-        // Load amy own parameters.
+        // Load my own parameters.
         nh.param<std::string>("model_file", lio_config.model_file, "/default/model.pt");
         nh.param<double>("init_time", lio_config.init_time, 2.0);
         nh.param<double>("valid_weight_threshold", lio_config.valid_weight_threshold, 0.8);
@@ -145,7 +145,7 @@ public:
         nh.param<int>("prediction_skip", lio_config.prediction_skip, 1);
 
 
-        
+
 
 
 
@@ -174,7 +174,6 @@ public:
     // Load a rosbag and play.
     // ISSUE: This player automatically start the main loop.
     void initRosbagPlayerAndRun(){
-        // const string rosbag_path = "/home/larry/featVoxelMap_ws/data/jyl-office.bag";
         const string rosbag_path = lio_config.offline_rosbag_file;
         ROS_WARN_STREAM("Load rosbag from: " << rosbag_path);
         try {
@@ -185,6 +184,7 @@ public:
             
             ros::Time::init();  // 重要！确保ros时间系统初始化
             
+            int frame_cnt = 0;
             for(const rosbag::MessageInstance& m : view) {
 
                 if(!ros::ok()){      // stop when ctrl+C
@@ -208,7 +208,7 @@ public:
                     processData();  // 将mainCB中的处理逻辑提取出来
                     double ros_current_time = sync_pack.cloud_start_time;
                     double dt = ros_current_time - rosbag_begin_time;
-                    ROS_INFO_STREAM("--> Rosbag start time: " << dt << " s.");
+                    ROS_INFO_STREAM("--> Frame index: " << frame_cnt++ <<", rosbag time: " << dt << " s.");
                 }
             }
             bag.close();
@@ -245,6 +245,7 @@ public:
                                            timestamp);
     }
 
+    // livox custom msg.
     void lidarCB(const livox_ros_driver2::CustomMsg::ConstPtr msg)
     {
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
@@ -259,6 +260,7 @@ public:
         group_data.last_lidar_time = timestamp;
         group_data.lidar_buffer.emplace_back(timestamp, cloud);
     }
+
 
     bool syncPackage()
     {
@@ -365,17 +367,6 @@ public:
         double current_ts = sync_pack.cloud_end_time;
         Eigen::Vector3d pos = state.pos;
         Eigen::Quaterniond quat(state.rot);
-        
-        // cout << "Save trajectory (TUM): " 
-        //     << std::fixed << std::setprecision(4) 
-        //     << current_ts << " "
-        //     << pos[0] << " "
-        //     << pos[1] << " "
-        //     << pos[2] << " "
-        //     << quat.x() << " "
-        //     << quat.y() << " "
-        //     << quat.z() << " "
-        //     << quat.w() << endl;
 
         traj_out_file_ << std::fixed << std::setprecision(4) << current_ts << " "
                     << pos[0] << " "

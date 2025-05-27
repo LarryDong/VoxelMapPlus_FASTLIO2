@@ -130,74 +130,78 @@ namespace kf
         shared_data.iter_num = 0;
         Vector23d delta = Vector23d::Zero();
         Matrix23d L = Matrix23d::Identity();
-
+        State new_x, original_x;
+        
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
-        for (size_t i = 0; i < max_iter_; i++)
-        {
-            func_(x_, shared_data);                 // func_ 动态绑定了： sharedUpdateFunc
-            H_.setZero();
-            b_.setZero();
-            delta = x_ - predict_x;
-            Matrix23d J = Matrix23d::Identity();
-            J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
-            J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-            J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
-            b_ += (J.transpose() * P_.inverse() * delta);
-            H_ += (J.transpose() * P_.inverse() * J);
-            H_.block<12, 12>(0, 0) += shared_data.H;
-            b_.block<12, 1>(0, 0) += shared_data.b;
-            delta = -H_.inverse() * b_;
-            x_ += delta;
-            shared_data.iter_num += 1;
-            if (delta.maxCoeff() < eps_)
-                break;
-        }
-        L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
-        L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-        L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
-        P_ = L * H_.inverse() * L.transpose();
+        if(!use_p2v){
+            for (size_t i = 0; i < max_iter_; i++)
+            {
+                func_(x_, shared_data);                 // func_ 动态绑定了： sharedUpdateFunc
+                H_.setZero();
+                b_.setZero();
+                delta = x_ - predict_x;
+                Matrix23d J = Matrix23d::Identity();
+                J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+                J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
+                J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
+                b_ += (J.transpose() * P_.inverse() * delta);
+                H_ += (J.transpose() * P_.inverse() * J);
+                H_.block<12, 12>(0, 0) += shared_data.H;
+                b_.block<12, 1>(0, 0) += shared_data.b;
+                delta = -H_.inverse() * b_;
+                x_ += delta;
+                shared_data.iter_num += 1;
+                if (delta.maxCoeff() < eps_)
+                    break;
+            }
+            L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+            L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
+            L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
+            P_ = L * H_.inverse() * L.transpose();
 
-        // print result.
-        State original_x = x_;
-        // original_x.printInfo("------------- [Old] State Estimation. -------------");
+            // print result.
+            original_x = x_;
+        }
         // ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
 
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
-        x_ = predict_x;         // reset back to inital value.
-        SharedState shared_data_p2v;
-        shared_data_p2v.iter_num = 0;
-        for (size_t i = 0; i < max_iter_; i++)
-        {
-            cout << "[func_p2v_] begin..." << endl;
-            func_p2v_(x_, shared_data_p2v);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
-            cout << "[func_p2v_] end..." << endl;
-            H_.setZero();
-            b_.setZero();
-            delta = x_ - predict_x;
-            Matrix23d J = Matrix23d::Identity();
-            J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
-            J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-            J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
-            b_ += (J.transpose() * P_.inverse() * delta);
-            H_ += (J.transpose() * P_.inverse() * J);
-            H_.block<12, 12>(0, 0) += shared_data.H;
-            b_.block<12, 1>(0, 0) += shared_data.b;
-            delta = -H_.inverse() * b_;
-            x_ += delta;
-            shared_data.iter_num += 1;
-            if (delta.maxCoeff() < eps_)
-                break;
-        }
-        // Matrix23d L = Matrix23d::Identity();
-        L = Matrix23d::Identity();
-        L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
-        L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-        L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
-        P_ = L * H_.inverse() * L.transpose();
-        ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
+        if(use_p2v){
+            x_ = predict_x;         // reset back to inital value.
+            SharedState shared_data_p2v;
+            shared_data_p2v.iter_num = 0;
+            for (size_t i = 0; i < max_iter_; i++)
+            {
+                cout << "[func_p2v_] begin. Iteration: " << i <<"/" << max_iter_ << endl;
+                func_p2v_(x_, shared_data_p2v);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
+                cout << "[func_p2v_] end." << endl;
+                H_.setZero();
+                b_.setZero();
+                delta = x_ - predict_x;
+                Matrix23d J = Matrix23d::Identity();
+                J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+                J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
+                J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
+                b_ += (J.transpose() * P_.inverse() * delta);
+                H_ += (J.transpose() * P_.inverse() * J);
+                H_.block<12, 12>(0, 0) += shared_data_p2v.H;
+                b_.block<12, 1>(0, 0) += shared_data_p2v.b;
+                delta = -H_.inverse() * b_;
+                x_ += delta;
+                shared_data_p2v.iter_num += 1;
+                if (delta.maxCoeff() < eps_)
+                    break;
+            }
+            // Matrix23d L = Matrix23d::Identity();
+            L = Matrix23d::Identity();
+            L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+            L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
+            L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
+            P_ = L * H_.inverse() * L.transpose();
+            ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
-        State new_x = x_;
+            new_x = x_;
+        }
         // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 

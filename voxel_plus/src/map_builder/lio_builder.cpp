@@ -253,9 +253,6 @@ namespace lio
 
             map->build(pv_list);
 
-            // map_p2v_->buildFeatVoxelMap(v_pts);
-            // map_p2v_->printInfo();
-
             status = LIOStatus::LIO_MAPPING;
             ROS_INFO("--> Map Inited. State-> LIO_MAPPING");
 
