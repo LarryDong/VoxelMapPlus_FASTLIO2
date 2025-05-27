@@ -1,5 +1,7 @@
 #include "ieskf.h"
 
+extern vector<Eigen::Vector3d> g_p2v_, g_p2plane_;
+
 namespace kf
 {
 
@@ -122,8 +124,8 @@ namespace kf
         P_ = F_ * P_ * F_.transpose() + G_ * Q * G_.transpose();
     }
 
-    void IESKF::update(bool use_p2v)
-    {   
+    void IESKF::update(bool use_p2v, ScanRegisterViewer& my_viewer){
+    // void IESKF::update(bool use_p2v, std::vector<Eigen::Vector3d>& p2plane, std::vector<Eigen::Vector3d>& p2v){
         //~ x_是状态量，在函数中更新了x_以及对应的P_；
         const State predict_x = x_;         //~ predict_x is never changed.
         SharedState shared_data;
@@ -131,12 +133,21 @@ namespace kf
         Vector23d delta = Vector23d::Zero();
         Matrix23d L = Matrix23d::Identity();
         State new_x, original_x;
-        
+
+
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
-        if(!use_p2v){
+        // if(!use_p2v){
             for (size_t i = 0; i < max_iter_; i++)
             {
-                func_(x_, shared_data);                 // func_ 动态绑定了： sharedUpdateFunc
+                func_(x_, shared_data, my_viewer, i==0);                 // func_ 动态绑定了： sharedUpdateFunc
+                
+                // TODO: draw point-to-plane vector. ISSUE: When to draw???
+                if(i==0)
+                {
+                    // process viewer;
+                    my_viewer.setP2Plane(g_p2plane_);
+                }
+
                 H_.setZero();
                 b_.setZero();
                 delta = x_ - predict_x;
@@ -161,19 +172,19 @@ namespace kf
 
             // print result.
             original_x = x_;
-        }
+        // }
         // ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
 
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
-        if(use_p2v){
+        // if(use_p2v){
             x_ = predict_x;         // reset back to inital value.
             SharedState shared_data_p2v;
             shared_data_p2v.iter_num = 0;
             for (size_t i = 0; i < max_iter_; i++)
             {
                 cout << "[func_p2v_] begin. Iteration: " << i <<"/" << max_iter_ << endl;
-                func_p2v_(x_, shared_data_p2v);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
+                func_p2v_(x_, shared_data_p2v, my_viewer, i==0);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
                 cout << "[func_p2v_] end." << endl;
                 H_.setZero();
                 b_.setZero();
@@ -201,7 +212,7 @@ namespace kf
             ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
             new_x = x_;
-        }
+        // }
         // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 

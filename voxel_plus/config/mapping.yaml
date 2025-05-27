@@ -18,7 +18,7 @@ merge_thresh_for_angle: 0.2
 merge_thresh_for_distance: 0.04
 
 
-use_offline_rosbag: true          # use offline rosbag
+use_offline_rosbag: false          # use offline rosbag
 # offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_00_img10hz600p.filter.bag
 # offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_01_img10hz600p.filter.bag
 # offline_rosbag_file: /home/larry/featVoxelMap_ws/data/BotanicGarden/1005_07_img10hz600p.filter.bag
@@ -30,7 +30,7 @@ offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
 trajectory_save_filename: /home/larry/Desktop/trajectory.txt
 
 
-model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/bg-100.pt
+model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/office-100.pt
 init_time: 5.0        # wait how many seconds to init the map.
 valid_weight_threshold: 0.6     # when predicting p2v, only p2v's weight > this threshold are choosen
 batch_size: 8

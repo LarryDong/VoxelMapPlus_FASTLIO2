@@ -2,13 +2,16 @@
 #include "my_ros_debugger.hpp"
 
 #include "feat_voxel_map.h"
+#include "my_viewer.h"
 
 #include <omp.h>
+#include <iostream>
 
 int g_scan_cnt = -1;
 extern int g_debug_featVoxelMap_init_cnt;
 extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
-
+extern ScanRegisterViewer my_viewer;
+vector<Eigen::Vector3d> g_p2v_, g_p2plane_;
 
 namespace lio
 {
@@ -35,11 +38,11 @@ namespace lio
 
         lidar_cloud.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
         kf.set_share_function(
-            [this](kf::State &s, kf::SharedState &d)
-            { sharedUpdateFunc(s, d); });
+            [this](kf::State &s, kf::SharedState &d, ScanRegisterViewer &v, bool b)
+            { sharedUpdateFunc(s, d, v, b); });
         kf.set_share_function_p2v(
-            [this](kf::State &s, kf::SharedState &d)
-            { sharedUpdateFunc_p2v(s, d); });
+            [this](kf::State &s, kf::SharedState &d, ScanRegisterViewer &v, bool b)
+            { sharedUpdateFunc_p2v(s, d, v, b); });
         data_group.residual_info.resize(10000);
     }
 
@@ -260,6 +263,7 @@ namespace lio
         else        // LIOStatus::LIO_MAPPING
         {
             undistortCloud(package);
+            pcl::PointCloud<pcl::PointXYZINormal>::Ptr world_ptr = lidarToWorld(package.cloud);
             if (config.scan_resolution > 0.0)       // 用于降采样。默认0.1m
             {
                 scan_filter.setInputCloud(package.cloud);
@@ -270,6 +274,8 @@ namespace lio
                 pcl::copyPointCloud(*package.cloud, *lidar_cloud);
             }
             int size = lidar_cloud->size();
+
+            vector<V3D> v_points_world;
             for (int i = 0; i < size; i++)
             {
                 data_group.residual_info[i].point_lidar = Eigen::Vector3d(lidar_cloud->points[i].x, lidar_cloud->points[i].y, lidar_cloud->points[i].z);
@@ -285,7 +291,13 @@ namespace lio
             else{
                 ROS_WARN("--> Waiting for init. Using original prediction.");
             }
-            kf.update(use_p2v);
+
+            // my_viewer.setScanPoint(world_ptr);
+            kf.update(false, my_viewer);
+            // TODO: Get p2v, and p2plane direction from kf.update.
+            my_viewer.publishPointAndMatch(package.cloud_end_time);
+            my_viewer.reset();
+
 
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(lidar_cloud);
             std::vector<PointWithCov> pv_list;
@@ -321,11 +333,14 @@ namespace lio
     }
 
     //~ Calculate residual, and H, b
-    void LIOBuilder::sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state)
+    //~ only `update_viewer` for the first iteration
+    void LIOBuilder::sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state, ScanRegisterViewer& my_viewer, bool update_viewer)
     {
         Eigen::Matrix3d r_wl = state.rot * state.rot_ext;
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int size = lidar_cloud->size();
+
+        std::cout << "Input pc size: " << size << std::endl;
 
 // #define MP_EN
 #ifdef MP_EN
@@ -333,8 +348,18 @@ namespace lio
 #pragma omp parallel for
 #endif
         for (int i = 0; i < size; i++)
-        {
+        {   
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
+            
+            if(update_viewer){
+                Eigen::Vector3d p_world = data_group.residual_info[i].point_world;
+                pcl::PointXYZINormal p_new;
+                p_new.x = p_world[0];
+                p_new.y = p_world[1];
+                p_new.z = p_world[2];
+                my_viewer.pc_world_.points.push_back(p_new);
+            }
+            
 
             Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
             data_group.residual_info[i].cov_world = r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() +
@@ -346,6 +371,27 @@ namespace lio
             {
                 // Paper, Section III.C eq(9), calculate `residual`, in residual_info.  
                 map->buildResidual(data_group.residual_info[i], iter->second);      //~ `iter->second` is query-point's voxel
+                
+                // TODO: get point-to-plane for debug.
+
+                if(update_viewer){
+                    ResidualData data = data_group.residual_info[i];
+                    Eigen::Vector3d p2m = data.point_world - data.plane_mean;
+                    double project_len = p2m.dot(data.plane_norm);
+                    Eigen::Vector3d p2plane = p2m - project_len * data.plane_norm;
+
+                    my_viewer.point_in_voxel_.push_back(true);
+                    my_viewer.p2plane_valid_.push_back(data_group.residual_info[i].is_valid);
+                    my_viewer.p2plane_.push_back(p2plane);
+                }
+                //get point-to-plane for debug.
+            }
+            else{
+                if(update_viewer){
+                    my_viewer.point_in_voxel_.push_back(false);
+                    my_viewer.p2plane_valid_.push_back(false);
+                    my_viewer.p2plane_.push_back(Eigen::Vector3d(0, 0, 0));     // add to keep order.
+                }
             }
         }
 
@@ -394,7 +440,7 @@ namespace lio
 
     /////////////////////////////////////////////////////////////////////////////////  P2V  /////////////////////////////////////////////////////////////////////////////////
     // new update function using FeatVoxelMap providing p2v and cov.
-    void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state){       // `func_p2v_`
+    void LIOBuilder::sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state, ScanRegisterViewer& my_viewer, bool update_viewer){       // `func_p2v_`
 
         ROS_WARN_ONCE("Call `sharedUpdateFunc_p2v` (this only output once)");
 

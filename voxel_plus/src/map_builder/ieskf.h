@@ -3,6 +3,8 @@
 #include <sophus/so3.hpp>
 
 #include <iostream>
+#include "my_viewer.h"
+
 using std::cout, std::endl;
 
 namespace kf
@@ -96,7 +98,7 @@ namespace kf
         Input(double a1, double a2, double a3, double g1, double g2, double g3) : acc(a1, a2, a3), gyro(g1, g2, g3) {}
     };
 
-    using measure_func = std::function<void(State &, SharedState &)>;
+    using measure_func = std::function<void(State &, SharedState &, ScanRegisterViewer &, bool)>;
 
     class IESKF
     {
@@ -121,7 +123,8 @@ namespace kf
 
         void predict(const Input &inp, double dt, const Matrix12d &Q);
 
-        void update(bool use_p2v=false);
+        // void update(bool use_p2v);
+        void update(bool use_p2v, ScanRegisterViewer& my_viewer);
 
     private:
         size_t max_iter_ = 5;

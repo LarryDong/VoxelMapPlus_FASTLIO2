@@ -68,6 +68,7 @@ set(SRC_LIST src/utils.cpp
              src/map_builder/voxel_map.cpp
              src/map_builder/feat_voxel_map.cpp
              src/map_builder/p2v_model.cpp
+             src/map_builder/my_viewer.cpp
              )
 
 add_executable(lio_node src/lio_node.cpp ${SRC_LIST} )

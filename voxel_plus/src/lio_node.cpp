@@ -18,10 +18,12 @@
 #define OFFLINE_ROSBAG      // cmusing offline rosbag loader.
 
 #include <iostream>
+#include "map_builder/my_viewer.h"
 
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_fullvoxelmap_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::VoxelGrid<pcl::PointXYZINormal> g_ds_filter;
+ScanRegisterViewer my_viewer;
 
 
 inline void addScanToWorldMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& point_world, float leaf_size = 0.05f){
@@ -519,17 +521,24 @@ public:
     std::string trajectory_save_filename_;
     std::ofstream traj_out_file_;
 
+
 };
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "lio_node");
+    ros::NodeHandle nh;
 
     // init ds filter
     double leaf_size = 0.05;
     g_ds_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
 
+
+    my_viewer.initViewer(nh);
+
     LIONode lio_node;
     ros::spin();
     return 0;
 }
+
+

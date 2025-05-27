@@ -5,6 +5,7 @@
 #include <pcl/common/transforms.h>
 #include "voxel_map.h"
 #include "feat_voxel_map.h"
+#include "my_viewer.h"
 
 using namespace std;
 
@@ -82,8 +83,8 @@ namespace lio
 
         void process(SyncPackage &package);
 
-        void sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state);       // state is not changed. So change to const.
-        void sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state);       // new!
+        void sharedUpdateFunc(const kf::State &state, kf::SharedState &shared_state, ScanRegisterViewer& my_viewer, bool update_view);       // state is not changed. So change to const.
+        void sharedUpdateFunc_p2v(const kf::State &state, kf::SharedState &shared_state, ScanRegisterViewer& my_viewer, bool update_view);       // new!
 
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr lidarToWorld(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud);
 
