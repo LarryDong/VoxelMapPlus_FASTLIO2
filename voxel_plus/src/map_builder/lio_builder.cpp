@@ -292,11 +292,11 @@ namespace lio
                 ROS_WARN("--> Waiting for init. Using original prediction.");
             }
 
-            // my_viewer.setScanPoint(world_ptr);
+            my_viewer.reset();
             kf.update(false, my_viewer);
             // TODO: Get p2v, and p2plane direction from kf.update.
+            // TODO: Set kf a new value to test the direction.
             my_viewer.publishPointAndMatch(package.cloud_end_time);
-            my_viewer.reset();
 
 
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = lidarToWorld(lidar_cloud);
@@ -351,15 +351,15 @@ namespace lio
         {   
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             
+            Eigen::Vector3d p_world = data_group.residual_info[i].point_world;
+            pcl::PointXYZINormal p_new;
+            p_new.x = p_world[0];
+            p_new.y = p_world[1];
+            p_new.z = p_world[2];
+
             if(update_viewer){
-                Eigen::Vector3d p_world = data_group.residual_info[i].point_world;
-                pcl::PointXYZINormal p_new;
-                p_new.x = p_world[0];
-                p_new.y = p_world[1];
-                p_new.z = p_world[2];
-                my_viewer.pc_world_.points.push_back(p_new);
+                my_viewer.pc_world_.points.push_back(p_new);        // save all points
             }
-            
 
             Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
             data_group.residual_info[i].cov_world = r_wl * data_group.residual_info[i].cov_lidar * r_wl.transpose() +
@@ -372,28 +372,23 @@ namespace lio
                 // Paper, Section III.C eq(9), calculate `residual`, in residual_info.  
                 map->buildResidual(data_group.residual_info[i], iter->second);      //~ `iter->second` is query-point's voxel
                 
-                // TODO: get point-to-plane for debug.
-
+                // save to viewer.
                 if(update_viewer){
                     ResidualData data = data_group.residual_info[i];
-                    Eigen::Vector3d p2m = data.point_world - data.plane_mean;
-                    double project_len = p2m.dot(data.plane_norm);
-                    Eigen::Vector3d p2plane = p2m - project_len * data.plane_norm;
-
-                    my_viewer.point_in_voxel_.push_back(true);
-                    my_viewer.p2plane_valid_.push_back(data_group.residual_info[i].is_valid);
+                    if(!data.is_valid)      // skip not-valid scans. 1) not plane; 2) too large p2plane
+                        continue;
+                    Eigen::Vector3d p2m = data.plane_mean - data.point_world;
+                    Eigen::Vector3d p2plane = p2m.dot(data.plane_norm) * data.plane_norm;
                     my_viewer.p2plane_.push_back(p2plane);
+                    my_viewer.pc_world_in_voxel_.points.push_back(p_new);
                 }
-                //get point-to-plane for debug.
             }
             else{
-                if(update_viewer){
-                    my_viewer.point_in_voxel_.push_back(false);
-                    my_viewer.p2plane_valid_.push_back(false);
-                    my_viewer.p2plane_.push_back(Eigen::Vector3d(0, 0, 0));     // add to keep order.
-                }
+                continue;
             }
         }
+        // cout << "''''''''''''''''''''''''''''''''" << endl;
+        // cout << my_viewer.pc_world_in_voxel_.points.size() << endl;
 
         shared_state.H.setZero();
         shared_state.b.setZero();

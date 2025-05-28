@@ -136,17 +136,17 @@ namespace kf
 
 
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
-        // if(!use_p2v){
+        if(!use_p2v){
             for (size_t i = 0; i < max_iter_; i++)
             {
-                func_(x_, shared_data, my_viewer, i==0);                 // func_ 动态绑定了： sharedUpdateFunc
-                
-                // TODO: draw point-to-plane vector. ISSUE: When to draw???
-                if(i==0)
-                {
-                    // process viewer;
-                    my_viewer.setP2Plane(g_p2plane_);
+                // update viewer on first iteration.
+
+                if(i==0){
+                    // change x to increate.
+                    x_.pos[0] += 0.1;           // add an offset for better visualization
+                    x_.pos[1] += 0.1;
                 }
+                func_(x_, shared_data, my_viewer, i==0);                 // func_ 动态绑定了： sharedUpdateFunc
 
                 H_.setZero();
                 b_.setZero();
@@ -172,12 +172,12 @@ namespace kf
 
             // print result.
             original_x = x_;
-        // }
+        }
         // ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
 
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
-        // if(use_p2v){
+        if(use_p2v){
             x_ = predict_x;         // reset back to inital value.
             SharedState shared_data_p2v;
             shared_data_p2v.iter_num = 0;
@@ -212,7 +212,7 @@ namespace kf
             ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
             new_x = x_;
-        // }
+        }
         // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 

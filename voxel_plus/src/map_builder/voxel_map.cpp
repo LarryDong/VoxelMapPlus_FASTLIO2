@@ -83,7 +83,7 @@ namespace lio
                 }
                 else
                 {
-                    merge();
+                    // merge();         //~ TODO: merge() will lead to plane_norm issues. 
                 }
             }
             else
@@ -195,6 +195,13 @@ namespace lio
                 near_node->plane->mean = new_mean;
                 near_node->plane->norm = new_norm;
                 near_node->plane->cov = new_cov;
+
+                //~ TODO: debug merge:
+                if(new_norm.norm() > 1){
+                    ROS_ERROR("Wrong normal!");
+                    cout << "near_node->plane->norm: " << near_node->plane->norm.transpose() << ", plane->norm: " << plane->norm.transpose() << endl;
+                    cout << " tn0: " << tn0 << ", tn1: " << tn1 << endl;
+                }
             }
         }
     }

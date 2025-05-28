@@ -62,7 +62,7 @@ struct NodeGroupData
 class LIONode
 {
 public:
-    LIONode() : nh("~")
+    LIONode(ros::NodeHandle& nh_input) : nh(nh_input)
     {
         loadConfig();
         initPublishers();
@@ -527,16 +527,20 @@ public:
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "lio_node");
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
 
     // init ds filter
     double leaf_size = 0.05;
     g_ds_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
 
+    double line_width=0.1;
+    int skip_cnt = 10;
+    nh.param<int>("skip_cnt", skip_cnt, 1);
+    nh.param<double>("line_width", line_width, 0.1);
 
-    my_viewer.initViewer(nh);
+    my_viewer.initViewer(nh, line_width, skip_cnt);
 
-    LIONode lio_node;
+    LIONode lio_node(nh);
     ros::spin();
     return 0;
 }
