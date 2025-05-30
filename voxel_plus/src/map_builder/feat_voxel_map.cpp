@@ -140,7 +140,7 @@ void FeatVoxelMap::buildFeatVoxelMap(const pcl::PointCloud<pcl::PointXYZINormal>
 
 // return: true if >50 points; else false. 
 // weight: decide if "data.is_valid"
-bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid){
+bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid, vector<Eigen::Vector3d>& debug_selected_voxel_points){
 
     ROS_WARN_ONCE("Called `buildResidualByPointnet` (this only output once)");
     data.is_valid = false;
@@ -148,7 +148,7 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     // TODO: now just use `temp_points_`. In the future, only input the voxel_feature, not the full points.
     if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)  // not enough points, return. (default:50)
         return false;
-    
+
     // normalize data to [0, 0.5] voxel.
     std::vector<V3D> points;
     points.reserve(voxel_grid->extract_feat_threshold_);
@@ -159,9 +159,11 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
         points.push_back(p - voxel_grid->lower_boundary_);
     }
 
-    p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
+    debug_selected_voxel_points.clear();
+    p2v_model_.predictP2V(points, query_point, data.p2v, data.weight, debug_selected_voxel_points);
+    debug_selected_voxel_points.push_back(query_point);
 
-    cout << "Prediction: data.p2v: " << data.p2v.transpose() << ", weight: " << data.weight << endl;
+    // cout << "Prediction: data.p2v: " << data.p2v.transpose() << ", weight: " << data.weight << endl;
 
     if (data.weight > valid_weight_threshold_)       // only for correct prediction. default: 0.8
         data.is_valid = true;

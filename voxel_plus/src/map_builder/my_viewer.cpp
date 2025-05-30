@@ -16,6 +16,8 @@ void ScanRegisterViewer::initViewer(ros::NodeHandle& nh, double line_width, int 
     ROS_WARN_STREAM("Init my viewer: ");
     cout << "line width: " << match_line_width_ << endl;
     cout << "skip_cnt: " << skip_cnt_ << endl;
+
+    setSaveFolder("/home/larry/Desktop/p2v_debug/");
 }
 
 

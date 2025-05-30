@@ -35,10 +35,29 @@ class ScanRegisterViewer{
         ScanRegisterViewer() = default;
         void initViewer(ros::NodeHandle& nh, double match_line_width, int skip_cnt);
         // void setScanPoint(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr);
-        void setP2Plane(const std::vector<Eigen::Vector3d>& p2p);
-        void setP2Voxel(const std::vector<Eigen::Vector3d>& p2v);
+        // void setP2Plane(const std::vector<Eigen::Vector3d>& p2p);
+        // void setP2Voxel(const std::vector<Eigen::Vector3d>& p2v);
         void publishPointAndMatch(double ts);
         void reset(void);
+
+        inline void setSaveFolder(const std::string& file_folder){
+            save_folder_ = file_folder;
+        }
+
+        inline void saveP2V(int idx, const Eigen::Vector3d& query, const std::vector<Eigen::Vector3d>&  voxel_points){
+            string filename = save_folder_ + std::to_string(idx) + ".csv";
+            ofstream out(filename);
+            if(!out.is_open()){
+                cout << "can't open file: " << filename << endl;
+                return ;
+            }
+            // out << query[0] << query[1] << query[2] << endl;
+            // debug_selected_voxel_points: 0-50, points, 51, p2v.
+            for(const auto& voxel : voxel_points){
+                out << voxel[0] << "," << voxel[1] << "," << voxel[2] << endl;
+            }
+            out.close();
+        }
 
     public:
         pcl::PointCloud<pcl::PointXYZINormal> pc_world_;                    // scan using last-state
@@ -53,6 +72,9 @@ class ScanRegisterViewer{
     private:
         double match_line_width_;
         int skip_cnt_;
+        // std::ofstream file_output_;
+        string save_folder_;
+
 };
 
 

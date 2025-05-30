@@ -456,6 +456,7 @@ namespace lio
             ResidualData* res = &(data_group.residual_info[i]);
             res->point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             VoxelKey position = map_p2v_->calcVoxelKey(res->point_world);
+            vector<Eigen::Vector3d> debug_selected_voxel_points;
             auto iter = map_p2v_->my_featmap_.find(position);
             if (iter != map_p2v_->my_featmap_.end()){
                 std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
@@ -466,10 +467,9 @@ namespace lio
                 if(skip_cnt++ % config.prediction_skip != 0)            // skip some points to speed-up
                     continue;
                 
-                bool has_predicted = map_p2v_->buildResidualByPointnet(*res, voxel_grid);
-
-
+                bool has_predicted = map_p2v_->buildResidualByPointnet(*res, voxel_grid, debug_selected_voxel_points);
             }
+            my_viewer.saveP2V(i, res->point_world, debug_selected_voxel_points);        // save data for debug.
         }
 #elif
         vector<Eigen::Vector3d> batch_queries;

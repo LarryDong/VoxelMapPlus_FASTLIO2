@@ -68,7 +68,7 @@ public:
         return VoxelKey(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
     }
 
-    bool buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid);
+    bool buildResidualByPointnet(ResidualData &data, std::shared_ptr<FeatVoxelGrid> voxel_grid, vector<Eigen::Vector3d>& debug_selected_voxel_points);
 
 
 

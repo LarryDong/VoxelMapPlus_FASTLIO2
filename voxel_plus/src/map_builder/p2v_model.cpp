@@ -74,7 +74,7 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_poin
     auto output = model_.forward(inputs); // Prediction.
     assert(output.isTuple());
     const auto &elements = output.toTuple()->elements();
-    
+
     // New model, (weight, p2v)
     auto pred_weight_tensor = elements[0].toTensor().to(torch::kCPU);
     auto pred_p2v_tensor = elements[1].toTensor().to(torch::kCPU);
@@ -97,7 +97,7 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_poin
 
 
 
-void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Vector3d& query, Eigen::Vector3d& p2v_pred, double& weight){
+void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Vector3d& query, Eigen::Vector3d& p2v_pred, double& weight, vector<Eigen::Vector3d>& debug_selected_voxel_points){
     
     my_ros_utility::MyTimer timer;
     timer.tic();
@@ -118,14 +118,17 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
     flattened_points.reserve(BATCH * N * DIM);
     // randomly select 50 points.
     std::vector<int> indices(points.size());
+    std::iota(indices.begin(), indices.end(), 0);  // Initialize the values.
     std::random_device rd;
     std::default_random_engine rng(rd());
     std::shuffle(indices.begin(), indices.end(), rng);
+
     for(int i=0; i<N; ++i){
         const auto& p = points[indices[i]];
         flattened_points.push_back(p[0]);
         flattened_points.push_back(p[1]);
         flattened_points.push_back(p[2]);
+        debug_selected_voxel_points.push_back(p);
     }
 
 
