@@ -74,12 +74,7 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_poin
     auto output = model_.forward(inputs); // Prediction.
     assert(output.isTuple());
     const auto &elements = output.toTuple()->elements();
-
-    // Old Model, (p2v, weight)
-    // 4. Back to CPU. synchronize is necessary. 
-    // auto pred_p2v_tensor = elements[0].toTensor().to(torch::kCPU);
-    // auto pred_weight_tensor = elements[1].toTensor().to(torch::kCPU);
-
+    
     // New model, (weight, p2v)
     auto pred_weight_tensor = elements[0].toTensor().to(torch::kCPU);
     auto pred_p2v_tensor = elements[1].toTensor().to(torch::kCPU);
@@ -140,13 +135,13 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
 
     // 2. query-point to tensor.
     std::vector<float> p = {float(query[0]), float(query[1]), float(query[2])};
-    torch::Tensor p_tensor = torch::tensor(p, torch::dtype(torch::kFloat32)).reshape({BATCH,  DIM}).clone().to(device_);
+    torch::Tensor query_tensor = torch::tensor(p, torch::dtype(torch::kFloat32)).reshape({BATCH,  DIM}).clone().to(device_);
 
 
     // 3. Predict
     std::vector<torch::jit::IValue> inputs;
     inputs.push_back(points_tensor);
-    inputs.push_back(p_tensor);
+    inputs.push_back(query_tensor);
 
     double t1 = timer.toc();        // pre-process time
 
@@ -176,13 +171,13 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
     // weight = double(tensor_data2[0]);
 
     // TODO: New model changed P2V and Weight sequence!!! (w, p2v)
-    // Output 1: w
+    // Output 1: weight
     torch::Device cpu_dev = torch::kCPU;
     torch::Tensor tensor1 = elements[0].toTensor().to(cpu_dev);
     auto tensor_data1 = tensor1.data_ptr<float>();
     weight = double(tensor_data1[0]);
 
-    // Output 2: weight.
+    // Output 2: p2v
     torch::Tensor tensor2 = elements[1].toTensor().to(cpu_dev);
     auto tensor_data2 = tensor2.data_ptr<float>();
     p2v_pred << double(tensor_data2[0]), double(tensor_data2[1]), double(tensor_data2[2]);

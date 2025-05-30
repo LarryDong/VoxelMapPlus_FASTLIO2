@@ -6,12 +6,28 @@
 #include <vector>
 #include <Eigen/Eigen>
 #include <ros/ros.h>
+#include <geometry_msgs/Point.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 
 using namespace std;
+
+
+namespace tool{
+
+inline void pclXYZIN2EigenV3d(const pcl::PointXYZINormal &pcl_point, Eigen::Vector3d &v3d){
+    v3d << pcl_point.x, pcl_point.y, pcl_point.z;
+}
+inline void eigenV3d2GeomsgPoint(const Eigen::Vector3d &v3d, geometry_msgs::Point &point){
+    point.x = v3d[0];
+    point.y = v3d[1];
+    point.z = v3d[2];
+}
+
+}
+
 
 
 class ScanRegisterViewer{
@@ -27,11 +43,12 @@ class ScanRegisterViewer{
     public:
         pcl::PointCloud<pcl::PointXYZINormal> pc_world_;                    // scan using last-state
         pcl::PointCloud<pcl::PointXYZINormal> pc_world_in_voxel_;           // scan points near voxels
-        std::vector<bool> p2plane_valid_, p2v_valid_;                       // if valid match.
+        pcl::PointCloud<pcl::PointXYZINormal> pc_world_in_voxel_p2v_;       // scan points near voxels, for p2v
+        // std::vector<bool> p2plane_valid_, p2v_valid_;                       // if valid match.
         std::vector<Eigen::Vector3d> p2plane_;                      // point to plane
         std::vector<Eigen::Vector3d> p2v_;                          // point to voxel
         ros::Publisher pub_scan_before_ikf_;                        // publish scan before the iKF iteration
-        ros::Publisher pub_marker_;                                 // publish markers, p2plane and p2v.
+        ros::Publisher pub_p2plane_marker_, pub_p2v_marker;         // publish markers, p2plane and p2v.
     
     private:
         double match_line_width_;

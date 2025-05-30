@@ -35,3 +35,4 @@ void calcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec,
 void calcVectQuation(const Eigen::Vector3d &norm, geometry_msgs::Quaternion &q);
 
 visualization_msgs::MarkerArray voxel2MarkerArray(std::shared_ptr<lio::VoxelMap> map, const std::string &frame_id, const double &timestamp, int max_capacity = 1000000, double voxel_size = 0.2);
+

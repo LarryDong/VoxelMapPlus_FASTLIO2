@@ -8,7 +8,8 @@
 
 void ScanRegisterViewer::initViewer(ros::NodeHandle& nh, double line_width, int skip_cnt){
     pub_scan_before_ikf_ = nh.advertise<sensor_msgs::PointCloud2>("/scan_before_ikf", 1000);
-    pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("/match_marker", 1000);
+    pub_p2plane_marker_ = nh.advertise<visualization_msgs::MarkerArray>("/p2plane_marker", 1000);
+    pub_p2v_marker = nh.advertise<visualization_msgs::MarkerArray>("/p2v_marker", 1000);
     match_line_width_ = line_width;
     skip_cnt_ = skip_cnt;
 
@@ -71,22 +72,22 @@ void ScanRegisterViewer::publishPointAndMatch(double timestamp){
     // show marker
     
     int id_idx = 0;
-
     // clean the marker.
     visualization_msgs::MarkerArray clear_markers;
     visualization_msgs::Marker clear_marker;
     clear_marker.action = visualization_msgs::Marker::DELETEALL;
     clear_marker.header.frame_id = "map";
     clear_markers.markers.push_back(clear_marker);
-    pub_marker_.publish(clear_markers);
+    pub_p2plane_marker_.publish(clear_markers);
+    pub_p2v_marker.publish(clear_markers);
 
     visualization_msgs::MarkerArray marker_array;
-    visualization_msgs::Marker lines = createMarker(id_idx, visualization_msgs::Marker::LINE_LIST, "map");
-    lines.scale.x = match_line_width_;          // Line width
-    lines.color.r = 1;
-    lines.color.g = 0;
-    lines.color.b = 0;
-    lines.color.a = 1;
+    visualization_msgs::Marker p2p_lines = createMarker(id_idx++, visualization_msgs::Marker::LINE_LIST, "map");
+    p2p_lines.scale.x = match_line_width_;          // Line width
+    p2p_lines.color.r = 1;
+    p2p_lines.color.g = 0;
+    p2p_lines.color.b = 0;
+    p2p_lines.color.a = 1;
 
     for(int i=0; i<N; ++i){
 
@@ -94,39 +95,61 @@ void ScanRegisterViewer::publishPointAndMatch(double timestamp){
             continue;
 
         Eigen::Vector3d scan_point;
-        pcl::PointXYZINormal pcl_point = pc_world_in_voxel_.points[i];
-        scan_point[0] = pcl_point.x;
-        scan_point[1] = pcl_point.y;
-        scan_point[2] = pcl_point.z;
+        tool::pclXYZIN2EigenV3d(pc_world_in_voxel_.points[i], scan_point);
 
-        Eigen::Vector3d plane_point = scan_point + p2plane_[i];
-        geometry_msgs::Point msg_scan_point, msg_plane_point;
+        Eigen::Vector3d p2plane_end_point = scan_point + p2plane_[i];
+        geometry_msgs::Point msg_scan_point, msg_end_point;
 
-        msg_plane_point.x = plane_point[0];
-        msg_plane_point.y = plane_point[1];
-        msg_plane_point.z = plane_point[2];
+        tool::eigenV3d2GeomsgPoint(p2plane_end_point, msg_end_point);
+        tool::eigenV3d2GeomsgPoint(scan_point, msg_scan_point);
 
-        msg_scan_point.x = scan_point[0];
-        msg_scan_point.y = scan_point[1];
-        msg_scan_point.z = scan_point[2];
-        
+
         // Bug debug.
-        // double dx = abs(msg_plane_point.x - msg_scan_point.x);
-        // double dy = abs(msg_plane_point.y - msg_scan_point.y);
+        // double dx = abs(msg_end_point.x - msg_scan_point.x);
+        // double dy = abs(msg_end_point.y - msg_scan_point.y);
         // if(dx > 0.5 || dy > 0.5) {
         //     cout << "dx: " << dx <<", dy: " << dy << endl;
-        //     cout <<"Plane point: " << plane_point.transpose() <<", scan point: " << scan_point.transpose() << endl;
+        //     cout <<"Plane point: " << p2plane_end_point.transpose() <<", scan point: " << scan_point.transpose() << endl;
         //     cout << "p2plane: " << p2plane_[i].transpose() << endl;
         // }
 
-        lines.points.push_back(msg_scan_point);
-        lines.points.push_back(msg_plane_point);
+        p2p_lines.points.push_back(msg_scan_point);
+        p2p_lines.points.push_back(msg_end_point);
     }
+    marker_array.markers.push_back(p2p_lines);
+    pub_p2plane_marker_.publish(marker_array);
 
-    marker_array.markers.push_back(lines);
+
 
     // TODO: publish p2v markers.
-    pub_marker_.publish(marker_array);
+    visualization_msgs::MarkerArray p2v_marker_array;
+    visualization_msgs::Marker p2v_lines = createMarker(id_idx++, visualization_msgs::Marker::LINE_LIST, "map");
+    p2v_lines.scale.x = match_line_width_;          // Line width
+    p2v_lines.color.r = 0;
+    p2v_lines.color.g = 1;
+    p2v_lines.color.b = 0;
+    p2v_lines.color.a = 1;
+
+    for(int i=0; i<pc_world_in_voxel_p2v_.size(); ++i){
+        if (i % skip_cnt_ == 0)
+            continue;
+
+        Eigen::Vector3d scan_point;
+        tool::pclXYZIN2EigenV3d(pc_world_in_voxel_p2v_.points[i], scan_point);
+
+        Eigen::Vector3d p2v_end_point = scan_point + p2v_[i];
+        geometry_msgs::Point msg_scan_point, msg_end_point;
+        
+        tool::eigenV3d2GeomsgPoint(p2v_end_point, msg_end_point);
+        tool::eigenV3d2GeomsgPoint(scan_point, msg_scan_point);
+        
+        p2v_lines.points.push_back(msg_scan_point);
+        p2v_lines.points.push_back(msg_end_point);
+    }
+    p2v_marker_array.markers.push_back(p2v_lines);
+    pub_p2v_marker.publish(p2v_marker_array);
+
+    ROS_INFO_STREAM("Published p2p marker: " << p2p_lines.points.size() / 2 << ", p2v marker: " << p2v_lines.points.size() / 2);
 }
 
 
@@ -145,7 +168,8 @@ void ScanRegisterViewer::reset(void){
     p2v_.resize(0);
     pc_world_.points.resize(0);
     pc_world_in_voxel_.points.resize(0);
-    p2plane_valid_.resize(0);
-    p2v_valid_.resize(0);
+    pc_world_in_voxel_p2v_.points.resize(0);
+    // p2plane_valid_.resize(0);
+    // p2v_valid_.resize(0);
 }
 

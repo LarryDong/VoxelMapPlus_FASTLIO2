@@ -340,8 +340,6 @@ namespace lio
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
         int size = lidar_cloud->size();
 
-        std::cout << "Input pc size: " << size << std::endl;
-
 // #define MP_EN
 #ifdef MP_EN
         omp_set_num_threads(MP_PROC_NUM);
@@ -448,13 +446,37 @@ namespace lio
 
         const int BATCH_SIZE = config.batch_size;
 
+
+        int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
+        int skip_cnt = 0;
+
+// #define USING_BATCH
+#ifndef USING_BATCH
+        for(int i=0; i<lidar_points_size; ++i){
+            ResidualData* res = &(data_group.residual_info[i]);
+            res->point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
+            VoxelKey position = map_p2v_->calcVoxelKey(res->point_world);
+            auto iter = map_p2v_->my_featmap_.find(position);
+            if (iter != map_p2v_->my_featmap_.end()){
+                std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
+                res->is_valid = false;
+                if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)       // skip small voxels.
+                    continue;
+
+                if(skip_cnt++ % config.prediction_skip != 0)            // skip some points to speed-up
+                    continue;
+                
+                bool has_predicted = map_p2v_->buildResidualByPointnet(*res, voxel_grid);
+
+
+            }
+        }
+#elif
         vector<Eigen::Vector3d> batch_queries;
         vector<vector<Eigen::Vector3d>> batch_voxel_points;
         vector<ResidualData*> batch_residuals;
         vector<std::unordered_map<VoxelKey, std::shared_ptr<FeatVoxelGrid>, VoxelKey::Hasher>::iterator> batch_iters;       // save iter, for color assign. (so urgly)
 
-        int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
-        int skip_cnt = 0;
         #pragma omp parallel for                            // parallel computation.
         for(int i=0; i<lidar_points_size; ++i){
             data_group.residual_info[i].point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
@@ -462,18 +484,6 @@ namespace lio
             VoxelKey position = map_p2v_->calcVoxelKey(data_group.residual_info[i].point_world);
             auto iter = map_p2v_->my_featmap_.find(position);
             if (iter != map_p2v_->my_featmap_.end()){
-
-#define USING_BATCH
-#ifndef USING_BATCH
-                // TODO: One-time prediction
-                //~ get p2v, weight. If not enough points, no-prediction; enough points, predict. weight>threshold, data.is_valid=true.
-                bool has_predicted = map_p2v_->buildResidualByPointnet(data_group.residual_info[i], iter->second);
-                if(has_predicted)
-                    do_prediction_cnt++;
-                // weight is assgined back to voxels. Only for NO-BATCH prediction, because BATCH prediction is complex to assign weight back.
-                const double weight_lower_bound = map_p2v_->valid_weight_threshold_;
-                iter->second->voxel_weight_ = (data_group.residual_info[i].weight - weight_lower_bound)/(1-weight_lower_bound); // normalize the voxel_weight
-#else
 
                 // Change to batch-predicting.
                 std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
@@ -489,18 +499,10 @@ namespace lio
                 V3D query_point;
                 query_point = res->point_world - voxel_grid->lower_boundary_;
 
-                // normalize the points.        TODO: normalize only once. Not verified
-                // std::vector<V3D> points;
-                // points.reserve(voxel_grid->temp_points_.size());
-                // for (auto p : voxel_grid->temp_points_){
-                //     points.push_back(p - voxel_grid->lower_boundary_);
-                // }
-
                 batch_queries.push_back(query_point);
                 batch_voxel_points.push_back(voxel_grid->normalized_points_);
                 batch_residuals.push_back(res);
                 batch_iters.push_back(iter);
-#endif
             }
             
             // calculate the weight/residual if we got a BATCH size of voxel.
@@ -512,12 +514,14 @@ namespace lio
                 
                 my_ros_utility::MyTimer timer;
                 timer.tic();
+
                 map_p2v_->p2v_model_.batchPredictP2V(batch_voxel_points, batch_queries, batch_p2v_pred, batch_weight, BATCH_SIZE);
                 double t = timer.toc();
 
                 // cout << "Predict a batch ( " << BATCH_SIZE <<" ), total time: " << t << "s." << endl;
                 // assign `is_valid` based on the weight.
                 for(int index_w=0; index_w < BATCH_SIZE; ++index_w){
+                    batch_residuals[index_w]->p2v = batch_p2v_pred[index_w];                    // assign p2v value
                     if(batch_weight[index_w] > map_p2v_->valid_weight_threshold_)
                         batch_residuals[index_w]->is_valid = true;
                     batch_iters[index_w]->second->voxel_weight_ = batch_weight[index_w];        // assign weight color back to voxels.
@@ -529,8 +533,9 @@ namespace lio
                 batch_residuals.clear();
                 batch_iters.clear();
             }
-
         }
+#endif
+
         double t0 = timer.toc();
 
         ///////////////////////////////////////////////// Check Build residual result /////////////////////////////////////////////////
@@ -556,11 +561,24 @@ namespace lio
 
         for (int i = 0; i < lidar_points_size; i++)
         {
-            if (!data_group.residual_info[i].is_valid)  // 只有对应voxel是平面时，才是true
+            ResidualData data = data_group.residual_info[i];
+            if (!data.is_valid)  // 只有对应voxel是平面时，才是true
                 continue;
             effect_num++;
             J.setZero();
-            
+
+            Eigen::Vector3d p_world = data.point_world;
+            pcl::PointXYZINormal p_new;
+            p_new.x = p_world[0];
+            p_new.y = p_world[1];
+            p_new.z = p_world[2];
+
+            if(update_viewer){
+                my_viewer.pc_world_in_voxel_p2v_.points.push_back(p_new);        // save all points
+                my_viewer.p2v_.push_back(data.p2v);         
+                // cout << "data.p2v:  " << data.p2v.transpose() << endl;      // TODO: ISSUE: BUGS: p2v is zero!!!!
+            }
+
             double weight = data_group.residual_info[i].weight;     // weight: 0.8 ~ 1, if valid.
             // double r_info = (weight-0.8)*5; // normalized to (0,1)
             double fen_mu = (1-map_p2v_->valid_weight_threshold_);
@@ -572,11 +590,7 @@ namespace lio
 
             J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();
             J.block<1, 3>(0, 3) = -data_group.residual_info[i].p2v.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
-            // if (config.estimate_ext)
-            // {
-            //     J.block<1, 3>(0, 6) = -plane_norm.transpose() * r_wl * Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
-            //     J.block<1, 3>(0, 9) = plane_norm.transpose() * state.rot;
-            // }
+
             shared_state.H += J.transpose() * r_info * J;
             double residual = data_group.residual_info[i].p2v.norm();
             // cout << "P2v residual: " << residual << endl;

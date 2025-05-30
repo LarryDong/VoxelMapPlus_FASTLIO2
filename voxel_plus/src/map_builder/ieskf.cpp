@@ -134,6 +134,8 @@ namespace kf
         Matrix23d L = Matrix23d::Identity();
         State new_x, original_x;
 
+        double debug_offset_x = 0.1;
+        double debug_offset_y = 0.1;
 
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
         if(!use_p2v){
@@ -143,8 +145,8 @@ namespace kf
 
                 if(i==0){
                     // change x to increate.
-                    x_.pos[0] += 0.1;           // add an offset for better visualization
-                    x_.pos[1] += 0.1;
+                    x_.pos[0] += debug_offset_x;           // add an offset for better visualization
+                    x_.pos[1] += debug_offset_y;
                 }
                 func_(x_, shared_data, my_viewer, i==0);                 // func_ 动态绑定了： sharedUpdateFunc
 
@@ -177,14 +179,21 @@ namespace kf
 
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
-        if(use_p2v){
+        // if(use_p2v){
             x_ = predict_x;         // reset back to inital value.
             SharedState shared_data_p2v;
             shared_data_p2v.iter_num = 0;
             for (size_t i = 0; i < max_iter_; i++)
             {
+                if(i==0){
+                    // change x to increate.
+                    x_.pos[0] += debug_offset_x;           // add an offset for better visualization
+                    x_.pos[1] += debug_offset_y;
+                }
                 cout << "[func_p2v_] begin. Iteration: " << i <<"/" << max_iter_ << endl;
+
                 func_p2v_(x_, shared_data_p2v, my_viewer, i==0);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
+                
                 cout << "[func_p2v_] end." << endl;
                 H_.setZero();
                 b_.setZero();
@@ -212,7 +221,7 @@ namespace kf
             ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
             new_x = x_;
-        }
+        // }
         // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 

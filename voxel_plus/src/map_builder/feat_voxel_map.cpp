@@ -153,8 +153,6 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     std::vector<V3D> points;
     points.reserve(voxel_grid->extract_feat_threshold_);
     V3D query_point;
-    // const double voxel_size = 0.5;
-    // V3D voxel_lower_bound = V3D(position_.x, position_.y, position_.z) * voxel_size;
     query_point = data.point_world - voxel_grid->lower_boundary_;
 
     for (auto p : voxel_grid->temp_points_){
@@ -162,6 +160,8 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     }
 
     p2v_model_.predictP2V(points, query_point, data.p2v, data.weight);
+
+    cout << "Prediction: data.p2v: " << data.p2v.transpose() << ", weight: " << data.weight << endl;
 
     if (data.weight > valid_weight_threshold_)       // only for correct prediction. default: 0.8
         data.is_valid = true;
