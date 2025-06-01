@@ -1,6 +1,7 @@
 #include "ieskf.h"
 
 extern vector<Eigen::Vector3d> g_p2v_, g_p2plane_;
+extern int g_scan_cnt;
 
 namespace kf
 {

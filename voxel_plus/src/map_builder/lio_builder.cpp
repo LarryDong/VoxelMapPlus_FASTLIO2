@@ -294,8 +294,6 @@ namespace lio
 
             my_viewer.reset();
             kf.update(false, my_viewer);
-            // TODO: Get p2v, and p2plane direction from kf.update.
-            // TODO: Set kf a new value to test the direction.
             my_viewer.publishPointAndMatch(package.cloud_end_time);
 
 
@@ -453,6 +451,7 @@ namespace lio
 // #define USING_BATCH
 #ifndef USING_BATCH
         for(int i=0; i<lidar_points_size; ++i){
+            bool has_predicted = false;
             ResidualData* res = &(data_group.residual_info[i]);
             res->point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             VoxelKey position = map_p2v_->calcVoxelKey(res->point_world);
@@ -467,11 +466,20 @@ namespace lio
                 if(skip_cnt++ % config.prediction_skip != 0)            // skip some points to speed-up
                     continue;
                 
-                bool has_predicted = map_p2v_->buildResidualByPointnet(*res, voxel_grid, debug_selected_voxel_points);
+                has_predicted = map_p2v_->buildResidualByPointnet(*res, voxel_grid, debug_selected_voxel_points);
             }
-            my_viewer.saveP2V(i, res->point_world, debug_selected_voxel_points);        // save data for debug.
+            
+            // only save the first scan.
+            if(update_viewer){
+                if(has_predicted){
+                    // cout << "debug_selected_voxel_points: " << debug_selected_voxel_points.size() << endl;
+                    // Eigen::Vector3d query = res->point_world - map_p2v_->my_featmap_.find(position)->second->lower_boundary_;
+                    Eigen::Vector3d NotUsed;
+                    my_viewer.saveP2V(g_scan_cnt, i, NotUsed, debug_selected_voxel_points);        // save data for debug.
+                }
+            }
         }
-#elif
+#else
         vector<Eigen::Vector3d> batch_queries;
         vector<vector<Eigen::Vector3d>> batch_voxel_points;
         vector<ResidualData*> batch_residuals;
@@ -562,7 +570,7 @@ namespace lio
         for (int i = 0; i < lidar_points_size; i++)
         {
             ResidualData data = data_group.residual_info[i];
-            if (!data.is_valid)  // 只有对应voxel是平面时，才是true
+            if (!data.is_valid)
                 continue;
             effect_num++;
             J.setZero();
@@ -575,8 +583,8 @@ namespace lio
 
             if(update_viewer){
                 my_viewer.pc_world_in_voxel_p2v_.points.push_back(p_new);        // save all points
-                my_viewer.p2v_.push_back(data.p2v);         
-                // cout << "data.p2v:  " << data.p2v.transpose() << endl;      // TODO: ISSUE: BUGS: p2v is zero!!!!
+                my_viewer.p2v_.push_back(data.p2v);
+                my_viewer.is_good_p2v_.push_back(data.weight>0.9);
             }
 
             double weight = data_group.residual_info[i].weight;     // weight: 0.8 ~ 1, if valid.

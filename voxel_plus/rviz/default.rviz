@@ -8,7 +8,6 @@ Panels:
         - /Odometry1/Shape1
         - /PC_beforeRegistraion1
         - /p2v_marker1
-        - /p2v_marker1/Status1
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz/Selection
@@ -167,7 +166,7 @@ Visualization Manager:
       Color: 114; 159; 207
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: true
       Max Color: 138; 226; 52
       Max Intensity: 1
@@ -184,7 +183,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: false
-      Value: false
+      Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz/Odometry
       Covariance:
@@ -352,8 +351,8 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
+        X: 0.7572743892669678
+        Y: 0.6585874557495117
         Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806

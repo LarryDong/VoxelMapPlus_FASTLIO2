@@ -162,6 +162,8 @@ bool FeatVoxelMap::buildResidualByPointnet(ResidualData &data, std::shared_ptr<F
     debug_selected_voxel_points.clear();
     p2v_model_.predictP2V(points, query_point, data.p2v, data.weight, debug_selected_voxel_points);
     debug_selected_voxel_points.push_back(query_point);
+    debug_selected_voxel_points.push_back(data.p2v);
+
 
     // cout << "Prediction: data.p2v: " << data.p2v.transpose() << ", weight: " << data.weight << endl;
 

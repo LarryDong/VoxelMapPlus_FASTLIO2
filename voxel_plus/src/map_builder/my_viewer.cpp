@@ -4,6 +4,8 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
+extern int g_scan_cnt;
+
 /////////////////////////////////////         Viewer
 
 void ScanRegisterViewer::initViewer(ros::NodeHandle& nh, double line_width, int skip_cnt){
@@ -126,11 +128,18 @@ void ScanRegisterViewer::publishPointAndMatch(double timestamp){
     // TODO: publish p2v markers.
     visualization_msgs::MarkerArray p2v_marker_array;
     visualization_msgs::Marker p2v_lines = createMarker(id_idx++, visualization_msgs::Marker::LINE_LIST, "map");
+    visualization_msgs::Marker p2v_lines2 = createMarker(id_idx++, visualization_msgs::Marker::LINE_LIST, "map");
     p2v_lines.scale.x = match_line_width_;          // Line width
     p2v_lines.color.r = 0;
     p2v_lines.color.g = 1;
     p2v_lines.color.b = 0;
     p2v_lines.color.a = 1;
+    p2v_lines2.scale.x = match_line_width_;          // Line width
+    p2v_lines2.color.r = 0;
+    p2v_lines2.color.g = 1;
+    p2v_lines2.color.b = 0;
+    p2v_lines2.color.a = 1;
+
 
     for(int i=0; i<pc_world_in_voxel_p2v_.size(); ++i){
         if (i % skip_cnt_ == 0)
@@ -145,33 +154,21 @@ void ScanRegisterViewer::publishPointAndMatch(double timestamp){
         tool::eigenV3d2GeomsgPoint(p2v_end_point, msg_end_point);
         tool::eigenV3d2GeomsgPoint(scan_point, msg_scan_point);
         
-        p2v_lines.points.push_back(msg_scan_point);
-        p2v_lines.points.push_back(msg_end_point);
+        if(is_good_p2v_[i]){
+            p2v_lines.points.push_back(msg_scan_point);
+            p2v_lines.points.push_back(msg_end_point);
+        }
+        else{
+            p2v_lines2.points.push_back(msg_scan_point);
+            p2v_lines2.points.push_back(msg_end_point);
+        }
     }
     p2v_marker_array.markers.push_back(p2v_lines);
+    p2v_marker_array.markers.push_back(p2v_lines2);
     pub_p2v_marker.publish(p2v_marker_array);
 
     ROS_INFO_STREAM("Published p2p marker: " << p2p_lines.points.size() / 2 << ", p2v marker: " << p2v_lines.points.size() / 2);
 }
 
 
-// void ScanRegisterViewer::setP2Plane(const std::vector<Eigen::Vector3d>& p2p){
-//     p2plane_.reserve(p2p.size());
-//     p2plane_.clear();
-//     for(auto p:p2p){
-//         p2plane_.push_back(p);
-//     }
-// }
-
-
-void ScanRegisterViewer::reset(void){
-    Eigen::Vector3d tmp;
-    p2plane_.resize(0);
-    p2v_.resize(0);
-    pc_world_.points.resize(0);
-    pc_world_in_voxel_.points.resize(0);
-    pc_world_in_voxel_p2v_.points.resize(0);
-    // p2plane_valid_.resize(0);
-    // p2v_valid_.resize(0);
-}
 
