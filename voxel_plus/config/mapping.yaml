@@ -30,9 +30,9 @@ offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
 trajectory_save_filename: /home/larry/Desktop/trajectory.txt
 
 
-model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/office-100.pt
+model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/noise500.pt
 init_time: 2.0        # wait how many seconds to init the map.
-valid_weight_threshold: 0.6     # when predicting p2v, only p2v's weight > this threshold are choosen
+valid_weight_threshold: 0.9     # when predicting p2v, only p2v's weight > this threshold are choosen
 batch_size: 8
 prediction_skip: 4                # how many point do one prediction? 1: every point; 2: half point.
 
@@ -40,3 +40,9 @@ prediction_skip: 4                # how many point do one prediction? 1: every p
 # viewer
 skip_cnt: 10
 line_width: 0.01
+
+
+voxel_random_color: true          # TODO: set each voxel a random color.
+
+
+r_info_scale: 0

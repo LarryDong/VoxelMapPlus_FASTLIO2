@@ -13,6 +13,8 @@ extern pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc;
 extern ScanRegisterViewer my_viewer;
 vector<Eigen::Vector3d> g_p2v_, g_p2plane_;
 
+extern double g_slam_init_time, g_ros_running_time;
+
 namespace lio
 {
     void LIOBuilder::loadConfig(LIOConfig &_config)
@@ -197,7 +199,7 @@ namespace lio
     {
         ROS_INFO_ONCE("LIOBuilder::process.");
         
-        map->printInfo(false);
+        // map->printInfo(false);
         
 
         /////////////////////////////////  my own FeatVoxelMap  /////////////////////////////////
@@ -206,7 +208,7 @@ namespace lio
         if(g_scan_cnt == config.init_time * lidar_frequency){
             ROS_WARN_STREAM("Get scan: " << g_scan_cnt << ", now create my own FeatVoxelMap");
             map_p2v_->buildFeatVoxelMap(g_global_pc);
-            map_p2v_->printInfo();
+            // map_p2v_->printInfo();
             map_p2v_->is_inited_ = true;
             // map_p2v_->saveToFile();
             // std::abort();
@@ -588,20 +590,28 @@ namespace lio
             }
 
             double weight = data_group.residual_info[i].weight;     // weight: 0.8 ~ 1, if valid.
+
+            
+
             // double r_info = (weight-0.8)*5; // normalized to (0,1)
             double fen_mu = (1-map_p2v_->valid_weight_threshold_);
             double fen_zi = weight - map_p2v_->valid_weight_threshold_;
             assert(fen_zi > 0);
             double r_info = fen_zi / fen_mu;    // normalized to (0,1)
             
-            r_info = r_info * 5000;         // scale-up. TODO: nor verified.
+            // r_info = r_info * config.r_info_scale;         // scale-up. TODO: nor verified.
+            r_info = 1000;
+
+            
+
 
             J.block<1, 3>(0, 0) = data_group.residual_info[i].p2v.transpose();
             J.block<1, 3>(0, 3) = -data_group.residual_info[i].p2v.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group.residual_info[i].point_lidar + state.pos_ext);
 
             shared_state.H += J.transpose() * r_info * J;
             double residual = data_group.residual_info[i].p2v.norm();
-            // cout << "P2v residual: " << residual << endl;
+            
+            // cout << "Weight: " << weight << ", r_info: " << r_info << ", residual: " << residual << endl;
             shared_state.b += J.transpose() * r_info * residual;
         }
         if (effect_num < 1)

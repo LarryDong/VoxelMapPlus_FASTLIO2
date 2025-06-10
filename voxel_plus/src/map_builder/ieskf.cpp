@@ -3,6 +3,10 @@
 extern vector<Eigen::Vector3d> g_p2v_, g_p2plane_;
 extern int g_scan_cnt;
 
+extern double g_slam_init_time, g_ros_running_time;
+
+
+
 namespace kf
 {
 
@@ -125,6 +129,9 @@ namespace kf
         P_ = F_ * P_ * F_.transpose() + G_ * Q * G_.transpose();
     }
 
+
+    // TODO: Rewrite the update function!!!
+
     void IESKF::update(bool use_p2v, ScanRegisterViewer& my_viewer){
     // void IESKF::update(bool use_p2v, std::vector<Eigen::Vector3d>& p2plane, std::vector<Eigen::Vector3d>& p2v){
         //~ x_是状态量，在函数中更新了x_以及对应的P_；
@@ -135,8 +142,10 @@ namespace kf
         Matrix23d L = Matrix23d::Identity();
         State new_x, original_x;
 
-        double debug_offset_x = 0.1;
-        double debug_offset_y = 0.1;
+        double debug_offset_x = 0.00;
+        double debug_offset_y = 0.00;
+
+        cout << "\n-------------------------\n" << endl;
 
         ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
         if(!use_p2v){
@@ -149,7 +158,10 @@ namespace kf
                     x_.pos[0] += debug_offset_x;           // add an offset for better visualization
                     x_.pos[1] += debug_offset_y;
                 }
-                func_(x_, shared_data, my_viewer, i==0);                 // func_ 动态绑定了： sharedUpdateFunc
+
+                // func_ 动态绑定了： sharedUpdateFunc
+                // sharedUpdateFunc calculate each `H`, and `b`.
+                func_(x_, shared_data, my_viewer, i==0);                 
 
                 H_.setZero();
                 b_.setZero();
@@ -165,9 +177,23 @@ namespace kf
                 delta = -H_.inverse() * b_;
                 x_ += delta;
                 shared_data.iter_num += 1;
+
+                // cout << "H: \n" << H_ << endl;
+                // cout << "\n b: \n" << b_ << endl;
+                // cout << "\n J: \n" << J << endl;
+                // cout << "\n delta: \n" << delta << endl;
+                // cout << "\n rot: \n" << x_.rot << " \n ,  pos: " << x_.pos.transpose() << endl;
+
+                // DEBUG:
+                cout << "\n Original Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+                cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+
+
                 if (delta.maxCoeff() < eps_)
                     break;
             }
+            //~ Kalman Filter Updata
             L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
             L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
             L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
@@ -181,7 +207,12 @@ namespace kf
         
         ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
         // if(use_p2v){
-            x_ = predict_x;         // reset back to inital value.
+            ROS_WARN_ONCE("==> Now Using P2V Update!");
+
+            // Reset values
+            x_ = predict_x;         // reset back to inital value.      TODO: REMOVE THIS!!! (Not necessary)
+            delta = Vector23d::Zero();
+
             SharedState shared_data_p2v;
             shared_data_p2v.iter_num = 0;
             for (size_t i = 0; i < max_iter_; i++)
@@ -191,14 +222,17 @@ namespace kf
                     x_.pos[0] += debug_offset_x;           // add an offset for better visualization
                     x_.pos[1] += debug_offset_y;
                 }
-                cout << "[func_p2v_] begin. Iteration: " << i <<"/" << max_iter_ << endl;
+                // cout << "[func_p2v_] begin. Iteration: " << i <<"/" << max_iter_ << endl;
 
                 func_p2v_(x_, shared_data_p2v, my_viewer, i==0);                 // func_p2v_ 动态绑定了： sharedUpdateFunc_p2v
                 
-                cout << "[func_p2v_] end." << endl;
+                // cout << "[func_p2v_] end." << endl;
+
                 H_.setZero();
                 b_.setZero();
                 delta = x_ - predict_x;
+
+
                 Matrix23d J = Matrix23d::Identity();
                 J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
                 J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
@@ -208,8 +242,28 @@ namespace kf
                 H_.block<12, 12>(0, 0) += shared_data_p2v.H;
                 b_.block<12, 1>(0, 0) += shared_data_p2v.b;
                 delta = -H_.inverse() * b_;
+
+                // cout << "222" << endl;
+                // cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                // cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+                
+                // cout << "\n H_:  \n" << H_ << endl;
+                // cout << "\n b_:  \n" << b_ << endl;
+
                 x_ += delta;
                 shared_data_p2v.iter_num += 1;
+
+
+                // cout << "H: \n" << H_ << endl;
+                // cout << "\n b: \n" << b_ << endl;
+                // cout << "\n J: \n" << J << endl;
+                // cout << "\n delta: \n" << delta << endl;
+                // cout << "\n rot: \n" << x_.rot << " \n ,  pos: " << x_.pos.transpose() << endl;
+
+                cout << "\n P2V Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+                cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+
                 if (delta.maxCoeff() < eps_)
                     break;
             }

@@ -20,10 +20,16 @@
 #include <iostream>
 #include "map_builder/my_viewer.h"
 
+#include <random>
+
+
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_global_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr g_fullvoxelmap_pc(new pcl::PointCloud<pcl::PointXYZINormal>);
 pcl::VoxelGrid<pcl::PointXYZINormal> g_ds_filter;
 ScanRegisterViewer my_viewer;
+
+double g_ros_running_time, g_slam_init_time=-1;
+
 
 
 inline void addScanToWorldMap(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr& point_world, float leaf_size = 0.05f){
@@ -145,6 +151,7 @@ public:
         nh.param<double>("valid_weight_threshold", lio_config.valid_weight_threshold, 0.8);
         nh.param<int>("batch_size", lio_config.batch_size, 4);
         nh.param<int>("prediction_skip", lio_config.prediction_skip, 1);
+        nh.param<double>("r_info_scale", lio_config.r_info_scale, 1);
 
 
 
@@ -234,6 +241,10 @@ public:
 
     void imuCB(const sensor_msgs::Imu::ConstPtr msg)
     {
+        g_ros_running_time = msg->header.stamp.toSec();
+        if(g_slam_init_time < 0)        // init time.
+            g_slam_init_time = g_ros_running_time;
+
         std::lock_guard<std::mutex> lock(group_data.imu_mutex);
         double timestamp = msg->header.stamp.toSec();
         if (timestamp < group_data.last_imu_time)
@@ -338,6 +349,11 @@ public:
             // intensity by weight.
             intensity = pair.second->voxel_weight_;
 
+            // intensity by random color
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<float> dis(0.0f, 1.0f);
+            intensity = dis(gen);
 
             for(const auto& v3d_point : pair.second->temp_points_){
                 pcl::PointXYZINormal point;

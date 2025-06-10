@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /FeatVoxelMap_PC1
         - /Odometry1/Shape1
         - /PC_beforeRegistraion1
         - /p2v_marker1
@@ -154,7 +155,7 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
-    - Alpha: 0.5
+    - Alpha: 1
       Autocompute Intensity Bounds: false
       Autocompute Value Bounds:
         Max Value: 10
@@ -177,7 +178,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.009999999776482582
+      Size (m): 0.029999999329447746
       Style: Flat Squares
       Topic: /lio_node/feat_voxel_map
       Unreliable: false
@@ -276,7 +277,7 @@ Visualization Manager:
       Marker Topic: /p2plane_marker
       Name: p2p_marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -343,7 +344,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 10
+      Distance: 33.616722106933594
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -351,17 +352,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.7572743892669678
-        Y: 0.6585874557495117
-        Z: 0
+        X: 0.477886438369751
+        Y: 6.792009353637695
+        Z: 9.5367431640625e-07
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7853981852531433
+      Pitch: 1.5697963237762451
       Target Frame: map
-      Yaw: 0.7853981852531433
+      Yaw: 1.6303973197937012
     Saved: ~
 Window Geometry:
   Displays:

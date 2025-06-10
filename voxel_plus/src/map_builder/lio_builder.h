@@ -54,6 +54,8 @@ namespace lio
 
         bool use_offline_rosbag = false;
         string offline_rosbag_file = "empty.bag";
+
+        double r_info_scale = 5000;
     };
 
 

@@ -76,7 +76,7 @@ public:
     MyFeatMap my_featmap_;
     P2VModel p2v_model_;
     bool is_inited_;                    // if the whole feature map is inited?
-    double valid_weight_threshold_;     // default: 50
+    double valid_weight_threshold_;     // default: 
 
 private:
     std::string save_folder_;           // give a folder to save the output;
