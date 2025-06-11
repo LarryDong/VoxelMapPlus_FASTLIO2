@@ -173,6 +173,10 @@ namespace kf
                 J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));                       // rotation's R-jacobian
                 J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));                       // ext-rot's R-jacobian
                 J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));     // graivity part.
+
+                // 这部分是先验的线性化
+                // x^ = argmin { (x-pred_x)*P^{-1}*(x-pred_x) + \sum |r_i|_R }，变成 Hx=b 后，H/b 第一部分是先验的偏导，第二部分是 shared_data 的 H和b
+                // 所以形式上，采用的是 Gauss-Newton 的方式优化的MAP，并不是信息矩阵形势下的Kalman
                 b_ += (J.transpose() * P_.inverse() * delta);       //~ ? Why +=, not assign?
                 H_ += (J.transpose() * P_.inverse() * J);
 
