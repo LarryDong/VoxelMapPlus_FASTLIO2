@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /FeatVoxelMap_PC1
         - /Odometry1/Shape1
+        - /Path1
         - /PC_beforeRegistraion1
         - /p2v_marker1
       Splitter Ratio: 0.5
@@ -202,7 +203,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: false
+      Enabled: true
       Keep: 50
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -219,17 +220,17 @@ Visualization Manager:
         Value: Axes
       Topic: /lio_node/slam_odom
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: false
+      Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.10000000149011612
+      Line Width: 0.05000000074505806
       Name: Path
       Offset:
         X: 0
@@ -243,7 +244,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /lio_node/slam_trajectory
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -277,7 +278,7 @@ Visualization Manager:
       Marker Topic: /p2plane_marker
       Name: p2p_marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -344,7 +345,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 33.616722106933594
+      Distance: 15.165365219116211
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -352,17 +353,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.477886438369751
-        Y: 6.792009353637695
+        X: 0.7409107685089111
+        Y: 2.1364316940307617
         Z: 9.5367431640625e-07
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.4947963953018188
       Target Frame: map
-      Yaw: 1.6303973197937012
+      Yaw: 1.6953972578048706
     Saved: ~
 Window Geometry:
   Displays:

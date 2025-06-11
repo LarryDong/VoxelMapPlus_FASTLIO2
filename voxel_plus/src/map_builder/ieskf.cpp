@@ -136,9 +136,12 @@ namespace kf
     // void IESKF::update(bool use_p2v, std::vector<Eigen::Vector3d>& p2plane, std::vector<Eigen::Vector3d>& p2v){
         //~ x_是状态量，在函数中更新了x_以及对应的P_；
         const State predict_x = x_;         //~ predict_x is never changed.
+        Matrix23d P_input = P_;
+        Matrix23d P_ori, P_new;
+
         SharedState shared_data;
         shared_data.iter_num = 0;
-        Vector23d delta = Vector23d::Zero();
+        Vector23d delta = Vector23d::Zero();        //~ ATTENTION: `delta` is vector23, `x_` is a 'State'
         Matrix23d L = Matrix23d::Identity();
         State new_x, original_x;
 
@@ -165,18 +168,42 @@ namespace kf
 
                 H_.setZero();
                 b_.setZero();
-                delta = x_ - predict_x;
+                delta = x_ - predict_x;                     // `delta` is vector, `x_` is 'State', "operation-" is defined.
                 Matrix23d J = Matrix23d::Identity();
-                J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
-                J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-                J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
-                b_ += (J.transpose() * P_.inverse() * delta);
+                J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));                       // rotation's R-jacobian
+                J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));                       // ext-rot's R-jacobian
+                J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));     // graivity part.
+                b_ += (J.transpose() * P_.inverse() * delta);       //~ ? Why +=, not assign?
                 H_ += (J.transpose() * P_.inverse() * J);
+
+                cout << "\n Original Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+
+                cout << "\n delta.segment<3>(3): \n" << delta.segment<3>(3) << endl;
+
+                cout <<" \n Test Jacobian: " << endl;
+                cout << "\n delta 3 R-jacobian: \n" << rightJacobian(delta.segment<3>(6));
+                cout << "\n delta 6 R-jacobian: \n" << rightJacobian(delta.segment<3>(3));
+                cout << "\n J: \n" << J << endl;
+
+                cout << "\n\n Ori: 11111111111 " << endl;
+                cout << "\n H: \n" << H_ << endl;
+                cout << "\n b: \n" << b_ << endl;
+                cout << "\n delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "\n delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+
                 H_.block<12, 12>(0, 0) += shared_data.H;
                 b_.block<12, 1>(0, 0) += shared_data.b;
                 delta = -H_.inverse() * b_;
                 x_ += delta;
                 shared_data.iter_num += 1;
+
+                cout << "\n\n Ori: 222222222222 " << endl;
+                cout << "\n H: \n" << H_ << endl;
+                cout << "\n b: \n" << b_ << endl;
+                cout << "\n delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "\n delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+
+
 
                 // cout << "H: \n" << H_ << endl;
                 // cout << "\n b: \n" << b_ << endl;
@@ -184,11 +211,13 @@ namespace kf
                 // cout << "\n delta: \n" << delta << endl;
                 // cout << "\n rot: \n" << x_.rot << " \n ,  pos: " << x_.pos.transpose() << endl;
 
-                // DEBUG:
-                cout << "\n Original Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
-                cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
-                cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
-
+                // // DEBUG:
+                // cout << "\n Original Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+                // cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                // cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+                // cout << "x pos: " << x_.pos[0] << ", " << x_.pos[1] << ", " << x_.pos[2] << endl;
+                // cout << "H: \n" << H_ << endl;
+                // cout << "\n b: \n" << b_ << endl;
 
                 if (delta.maxCoeff() < eps_)
                     break;
@@ -196,10 +225,11 @@ namespace kf
             //~ Kalman Filter Updata
             L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
             L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
-            L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
+            L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));     // gravity-term, dim=2 (length=Gravity)
             P_ = L * H_.inverse() * L.transpose();
 
             // print result.
+            P_ori = P_;
             original_x = x_;
         }
         // ///////////////////////////////////////////////////  Original Method  ///////////////////////////////////////////////////
@@ -212,6 +242,8 @@ namespace kf
             // Reset values
             x_ = predict_x;         // reset back to inital value.      TODO: REMOVE THIS!!! (Not necessary)
             delta = Vector23d::Zero();
+            L = Matrix23d::Identity();
+            P_ = P_input;
 
             SharedState shared_data_p2v;
             shared_data_p2v.iter_num = 0;
@@ -233,25 +265,40 @@ namespace kf
                 delta = x_ - predict_x;
 
 
+                // ISSUE: `H_` is always increasing!!!!!!, `b_` scale is very different from original b
+
                 Matrix23d J = Matrix23d::Identity();
                 J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
                 J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
                 J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
                 b_ += (J.transpose() * P_.inverse() * delta);
                 H_ += (J.transpose() * P_.inverse() * J);
+
+
+                cout << "\n P2V Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+
+                cout << "\n\n P2V: 11111111111 " << endl;
+                cout << "\n H: \n" << H_ << endl;
+                cout << "\n b: \n" << b_ << endl;
+                cout << "\n delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "\n delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+
+
                 H_.block<12, 12>(0, 0) += shared_data_p2v.H;
                 b_.block<12, 1>(0, 0) += shared_data_p2v.b;
+
+
+
+
                 delta = -H_.inverse() * b_;
-
-                // cout << "222" << endl;
-                // cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
-                // cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
-                
-                // cout << "\n H_:  \n" << H_ << endl;
-                // cout << "\n b_:  \n" << b_ << endl;
-
                 x_ += delta;
                 shared_data_p2v.iter_num += 1;
+
+                cout << "\n\n P2V: 222222222222 " << endl;
+                cout << "\n H: \n" << H_ << endl;
+                cout << "\n b: \n" << b_ << endl;
+                cout << "\n delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                cout << "\n delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
 
 
                 // cout << "H: \n" << H_ << endl;
@@ -260,31 +307,38 @@ namespace kf
                 // cout << "\n delta: \n" << delta << endl;
                 // cout << "\n rot: \n" << x_.rot << " \n ,  pos: " << x_.pos.transpose() << endl;
 
-                cout << "\n P2V Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
-                cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
-                cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+                // cout << "\n P2V Update. Time: " << g_ros_running_time - g_slam_init_time << ", Iteration: " << i << endl;
+                // cout << "delta rot: " << delta[0] << ", " << delta[1] << ", " << delta[2] << endl;
+                // cout << "delta pos: " << delta[3] << ", " << delta[4] << ", " << delta[5] << endl;
+                // cout << "x pos: " << x_.pos[0] << ", " << x_.pos[1] << ", " << x_.pos[2] << endl;
+
+                // cout << "H: \n" << H_ << endl;
+                // cout << "\n b: \n" << b_ << endl;
 
                 if (delta.maxCoeff() < eps_)
                     break;
             }
-            // Matrix23d L = Matrix23d::Identity();
-            L = Matrix23d::Identity();
             L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
             L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
             L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
             P_ = L * H_.inverse() * L.transpose();
             ///////////////////////////////////////////////////  NEW P2V Method  ///////////////////////////////////////////////////
 
+            P_new = P_;
             new_x = x_;
         // }
         // new_x.printInfo("------------- [P2V] State Estimation. -------------");
         
 
         // Select which state to use, based on init.
-        if (use_p2v)
+        if (use_p2v){
             x_ = new_x;
-        else
+            P_ = P_new;
+        }
+        else{
             x_ = original_x;
+            P_ = P_ori;
+        }
 
     }
 
