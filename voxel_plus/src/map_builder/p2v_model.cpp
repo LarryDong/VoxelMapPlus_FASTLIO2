@@ -27,7 +27,7 @@ void P2VModel::batchPredictP2V(const vector<vector<Eigen::Vector3d>> &batch_poin
 {
     // [batch=1, N=50, Dim=3]
     // const int BATCH = 8;
-    const int N = 50;
+    const int N = 30;
     const int DIM = 3;
 
     assert(batch_points.size() == BATCH_SIZE);
@@ -104,7 +104,7 @@ void P2VModel::predictP2V(const vector<Eigen::Vector3d>& points, const Eigen::Ve
 
     // [batch=1, N=50, Dim=3]
     const int BATCH = 1;
-    const int N = 50;
+    const int N = 30;
     const int DIM = 3;
 
     if (points.size() < N){

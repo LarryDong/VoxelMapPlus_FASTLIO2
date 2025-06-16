@@ -70,6 +70,8 @@ class ScanRegisterViewer{
             out.close();
         }
 
+        void saveAllP2V(int scan_idx, bool is_p2v);
+
     public:
         pcl::PointCloud<pcl::PointXYZINormal> pc_world_;                    // scan using last-state
         pcl::PointCloud<pcl::PointXYZINormal> pc_world_in_voxel_;           // scan points near voxels

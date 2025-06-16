@@ -295,7 +295,7 @@ namespace lio
             }
 
             my_viewer.reset();
-            kf.update(false, my_viewer);
+            kf.update(use_p2v, my_viewer);
             my_viewer.publishPointAndMatch(package.cloud_end_time);
 
 
@@ -387,6 +387,9 @@ namespace lio
         }
         // cout << "''''''''''''''''''''''''''''''''" << endl;
         // cout << my_viewer.pc_world_in_voxel_.points.size() << endl;
+        if(update_viewer){
+            my_viewer.saveAllP2V(g_scan_cnt, false);
+        }
 
         shared_state.H.setZero();
         shared_state.b.setZero();
@@ -423,11 +426,15 @@ namespace lio
                 J.block<1, 3>(0, 6) = -plane_norm.transpose() * r_wl * Sophus::SO3d::hat(data_group.residual_info[i].point_lidar);
                 J.block<1, 3>(0, 9) = plane_norm.transpose() * state.rot;
             }
+            //~ shared_state's H, b: \sum_i |r_i|_R_i
             shared_state.H += J.transpose() * r_info * J;
             shared_state.b += J.transpose() * r_info * data_group.residual_info[i].residual;
         }
         if (effect_num < 1)
             std::cout << "NO EFFECTIVE POINT";
+        else {
+            cout << "Effect number: " << effect_num << endl;
+        }
         // std::cout << "==================: " << effect_num << std::endl;
     }
 
@@ -450,20 +457,26 @@ namespace lio
         int do_prediction_cnt = 0;                          // record how many times the prediction is called. (not the "valid" prediction)
         int skip_cnt = 0;
 
+        int less_point_cnt = 0;
+        int enough_point_cnt = 0;
+
 // #define USING_BATCH
 #ifndef USING_BATCH
         for(int i=0; i<lidar_points_size; ++i){
             bool has_predicted = false;
             ResidualData* res = &(data_group.residual_info[i]);
+            res->is_valid = false;
             res->point_world = r_wl * data_group.residual_info[i].point_lidar + p_wl;
             VoxelKey position = map_p2v_->calcVoxelKey(res->point_world);
             vector<Eigen::Vector3d> debug_selected_voxel_points;
             auto iter = map_p2v_->my_featmap_.find(position);
             if (iter != map_p2v_->my_featmap_.end()){
                 std::shared_ptr<FeatVoxelGrid> voxel_grid = iter->second;
-                res->is_valid = false;
-                if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_)       // skip small voxels.
+                if(voxel_grid->temp_points_.size() < voxel_grid->extract_feat_threshold_){       // skip small voxels.
+                    less_point_cnt++;
                     continue;
+                }
+                enough_point_cnt++;
 
                 if(skip_cnt++ % config.prediction_skip != 0)            // skip some points to speed-up
                     continue;
@@ -472,14 +485,14 @@ namespace lio
             }
             
             // only save the first scan.
-            if(update_viewer){
-                if(has_predicted){
-                    // cout << "debug_selected_voxel_points: " << debug_selected_voxel_points.size() << endl;
-                    // Eigen::Vector3d query = res->point_world - map_p2v_->my_featmap_.find(position)->second->lower_boundary_;
-                    Eigen::Vector3d NotUsed;
-                    my_viewer.saveP2V(g_scan_cnt, i, NotUsed, debug_selected_voxel_points);        // save data for debug.
-                }
-            }
+            // if(update_viewer){
+            //     if(has_predicted){
+            //         // cout << "debug_selected_voxel_points: " << debug_selected_voxel_points.size() << endl;
+            //         // Eigen::Vector3d query = res->point_world - map_p2v_->my_featmap_.find(position)->second->lower_boundary_;
+            //         Eigen::Vector3d NotUsed;
+            //         my_viewer.saveP2V(g_scan_cnt, i, NotUsed, debug_selected_voxel_points);        // save data for debug.
+            //     }
+            // }
         }
 #else
         vector<Eigen::Vector3d> batch_queries;
@@ -557,8 +570,9 @@ namespace lio
             }
         }
         cout << "[sharedUpdateFunc_p2v] Total residual number: " << lidar_points_size <<", residual calculation time: " << t0 << endl;
-        cout << "[sharedUpdateFunc_p2v] Total prediction cnt : " << do_prediction_cnt << ", average prediction time: " << t0 / do_prediction_cnt << endl;
+        // cout << "[sharedUpdateFunc_p2v] Total prediction cnt : " << do_prediction_cnt << ", average prediction time: " << t0 / do_prediction_cnt << endl;
         cout << "[sharedUpdateFunc_p2v] Valid residual number: " << valid_residual_cnt << endl;
+        cout << "[sharedUpdateFunc_p2v] Less/enough point voxel: " << less_point_cnt << " / " << enough_point_cnt << endl;
         /////////////////////////////////////////////////
 
 
@@ -586,6 +600,7 @@ namespace lio
             if(update_viewer){
                 my_viewer.pc_world_in_voxel_p2v_.points.push_back(p_new);        // save all points
                 my_viewer.p2v_.push_back(data.p2v);
+                // cout <<"p2v_ size: " << my_viewer.p2v_.size() << endl;
                 my_viewer.is_good_p2v_.push_back(data.weight>0.9);
             }
 
@@ -616,6 +631,13 @@ namespace lio
         }
         if (effect_num < 1)
             std::cout << "NO EFFECTIVE POINT" << std::endl;
+        else {
+            cout << "Effect number: " << effect_num << endl;
+        }
+
+        if (update_viewer){
+            my_viewer.saveAllP2V(g_scan_cnt, true);
+        }
         // std::cout << "==================: " << effect_num << std::endl;
     }
 }

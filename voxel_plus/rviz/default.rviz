@@ -5,10 +5,10 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Grid1
         - /FeatVoxelMap_PC1
+        - /Odometry1
         - /Odometry1/Shape1
-        - /Path1
-        - /PC_beforeRegistraion1
         - /p2v_marker1
       Splitter Ratio: 0.5
     Tree Height: 719
@@ -47,7 +47,7 @@ Visualization Manager:
       Show Trail: false
       Value: false
     - Alpha: 0.5
-      Cell Size: 0.5
+      Cell Size: 0.10000000149011612
       Class: rviz/Grid
       Color: 160; 160; 164
       Enabled: true
@@ -186,7 +186,7 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: false
       Value: true
-    - Angle Tolerance: 0.10000000149011612
+    - Angle Tolerance: 0.009999999776482582
       Class: rviz/Odometry
       Covariance:
         Orientation:
@@ -206,12 +206,12 @@ Visualization Manager:
       Enabled: true
       Keep: 50
       Name: Odometry
-      Position Tolerance: 0.10000000149011612
+      Position Tolerance: 0.009999999776482582
       Queue Size: 10
       Shape:
         Alpha: 1
         Axes Length: 0.30000001192092896
-        Axes Radius: 0.05000000074505806
+        Axes Radius: 0.009999999776482582
         Color: 255; 25; 0
         Head Length: 0.30000001192092896
         Head Radius: 0.10000000149011612
@@ -230,7 +230,7 @@ Visualization Manager:
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.05000000074505806
+      Line Width: 0.019999999552965164
       Name: Path
       Offset:
         X: 0
@@ -286,7 +286,7 @@ Visualization Manager:
       Marker Topic: /p2v_marker
       Name: p2v_marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -345,7 +345,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 15.165365219116211
+      Distance: 0.9422459602355957
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -353,17 +353,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.7409107685089111
-        Y: 2.1364316940307617
+        X: 0.04164889454841614
+        Y: 0.3203014135360718
         Z: 9.5367431640625e-07
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4947963953018188
+      Pitch: 1.5697963237762451
       Target Frame: map
-      Yaw: 1.6953972578048706
+      Yaw: 1.5753998756408691
     Saved: ~
 Window Geometry:
   Displays:

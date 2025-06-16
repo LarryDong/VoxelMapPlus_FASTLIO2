@@ -167,8 +167,39 @@ void ScanRegisterViewer::publishPointAndMatch(double timestamp){
     p2v_marker_array.markers.push_back(p2v_lines2);
     pub_p2v_marker.publish(p2v_marker_array);
 
-    ROS_INFO_STREAM("Published p2p marker: " << p2p_lines.points.size() / 2 << ", p2v marker: " << p2v_lines.points.size() / 2);
+    // ROS_INFO_STREAM("Published p2p marker: " << p2p_lines.points.size() / 2 << ", p2v marker: " << p2v_lines.points.size() / 2);
 }
 
+
+void ScanRegisterViewer::saveAllP2V(int scan_idx, bool is_p2v){
+    string filename;
+    if(is_p2v){
+        // cout <<"Save p2v" << endl;
+        filename = save_folder_ + std::to_string(scan_idx) + "_p2v.txt";
+        ofstream out(filename);
+        if (!out.is_open()){
+            cout << "can't open file: " << filename << endl;
+            return;
+        }
+        for(auto v : p2v_){
+            out << v[0] << "," << v[1] << "," << v[2] << endl;
+            cout << v[0] << "," << v[1] << "," << v[2] << endl;
+        }
+        out.close();
+    }
+    else{
+        // cout <<"Save p2plane" << endl;
+        filename = save_folder_ + std::to_string(scan_idx) + "_p2p.txt";
+        ofstream out(filename);
+        if (!out.is_open()){
+            cout << "can't open file: " << filename << endl;
+            return;
+        }
+        for(auto v : p2plane_){
+            out << v[0] << "," << v[1] << "," << v[2] << endl;
+        }
+        out.close();
+    }
+}
 
 

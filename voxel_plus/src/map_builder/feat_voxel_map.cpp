@@ -19,7 +19,7 @@ FeatVoxelGrid::FeatVoxelGrid(VoxelKey _position):
     group_id_ = FeatVoxelGrid::count_++;
     voxel_size_ = 0.5;
     is_feat_extracted_ = false;
-    extract_feat_threshold_ = 50;               // default: 25 poins to extract feat.
+    extract_feat_threshold_ = 30;               // default: 25 poins to extract feat.
 
     lower_boundary_ = V3D(position_.x, position_.y, position_.z) * voxel_size_;
     

@@ -9,6 +9,7 @@ publish_voxel_num: 2000
 
 
 scan_resolution: 0.1
+# scan_resolution: 0.1
 voxel_size: 0.2
 # voxel_size: 0.4
 map_capacity: 100000
@@ -30,7 +31,7 @@ offline_rosbag_file: /home/larry/featVoxelMap_ws/data/jyl-office.bag
 trajectory_save_filename: /home/larry/Desktop/trajectory.txt
 
 
-model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/noise500.pt
+model_file: /home/larry/codeGit/implict_voxel/src/feat_voxel_map_unique/checkpoint/sample-30.pt
 init_time: 2.0        # wait how many seconds to init the map.
 valid_weight_threshold: 0.9     # when predicting p2v, only p2v's weight > this threshold are choosen
 batch_size: 8
